@@ -2,6 +2,9 @@
 bin/
 obj/
 
+# Temporary speech samples
+cpp/temp_speech_samples/
+
 # User-specific files
 *.suo
 *.user
