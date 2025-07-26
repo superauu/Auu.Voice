@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text;
+using Microsoft.Win32;
 using Speech2TextAssistant.Models;
 
 namespace Speech2TextAssistant;
@@ -29,11 +30,12 @@ public class MainForm : Form
     {
         InitializeComponent();
         CreateControls();
-        Size = new Size(600, 560);
+        Size = new Size(800, 700);
         FormBorderStyle = FormBorderStyle.FixedSingle;
         MaximizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         Text = "语音转文字助手";
+        BackColor = SystemColors.Control;
 
         InitializeServices();
         LoadSettings();
@@ -41,6 +43,7 @@ public class MainForm : Form
         
         // 确保窗口完全加载后再启用快捷键
         this.Load += MainForm_Load;
+        this.Shown += MainForm_Shown;
     }
     
     private void MainForm_Load(object? sender, EventArgs e)
@@ -50,6 +53,15 @@ public class MainForm : Form
         {
             _hotkeyService?.UnregisterHotkey();
             _hotkeyService?.RegisterHotkey(Handle, _settings.HotKey);
+        }
+    }
+    
+    private void MainForm_Shown(object? sender, EventArgs e)
+    {
+        // 检查是否需要启动时最小化到托盘
+        if (_settings?.MinimizeToTray == true)
+        {
+            Hide();
         }
     }
 
@@ -75,106 +87,372 @@ public class MainForm : Form
 
     private void CreateControls()
     {
-        // API设置组
-        var apiGroup = new GroupBox { Text = "API 设置", Location = new Point(10, 10), Size = new Size(560, 120) };
-
-        var apiKeyLabel = new Label
-            { Text = "OpenAI API Key:", Location = new Point(10, 25), Size = new Size(100, 20) };
-        _apiKeyTextBox = new TextBox
-            { Location = new Point(120, 23), Size = new Size(420, 20), UseSystemPasswordChar = true };
-
-        var speechKeyLabel = new Label
-            { Text = "Azure Speech Key:", Location = new Point(10, 55), Size = new Size(100, 20) };
-        _speechKeyTextBox = new TextBox
-            { Location = new Point(120, 53), Size = new Size(200, 20), UseSystemPasswordChar = true };
-
-        var speechRegionLabel = new Label { Text = "Region:", Location = new Point(330, 55), Size = new Size(50, 20) };
-        _speechRegionTextBox = new TextBox { Location = new Point(380, 53), Size = new Size(100, 20), Text = "eastus" };
-
-        var modelLabel = new Label { Text = "GPT Model:", Location = new Point(10, 85), Size = new Size(100, 20) };
-        _modelCombo = new ComboBox
+        // 主布局容器
+        var mainLayout = new TableLayoutPanel
         {
-            Location = new Point(120, 83),
-            Size = new Size(150, 20),
-            DropDownStyle = ComboBoxStyle.DropDownList
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 4,
+            Padding = new Padding(15),
+            BackColor = SystemColors.Control
         };
-        _modelCombo.Items.AddRange("gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "gpt-4o");
-
-        apiGroup.Controls.AddRange(apiKeyLabel, _apiKeyTextBox, speechKeyLabel, _speechKeyTextBox, speechRegionLabel,
-            _speechRegionTextBox, modelLabel, _modelCombo);
-
+        
+        // 设置行高
+        mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // API设置
+        mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // 功能设置
+        mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // 日志区域
+        mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // 按钮区域
+        
+        // API设置组
+        var apiGroup = CreateApiSettingsGroup();
+        mainLayout.Controls.Add(apiGroup, 0, 0);
+        
         // 功能设置组
-        var funcGroup = new GroupBox { Text = "功能设置", Location = new Point(10, 140), Size = new Size(560, 110) };
-
-        var hotkeyLabel = new Label { Text = "快捷键:", Location = new Point(10, 25), Size = new Size(60, 20) };
-        _hotkeyTextBox = new TextBox { Location = new Point(80, 23), Size = new Size(120, 20), ReadOnly = false };
+        var funcGroup = CreateFunctionSettingsGroup();
+        mainLayout.Controls.Add(funcGroup, 0, 1);
+        
+        // 日志区域
+        var logPanel = CreateLogPanel();
+        mainLayout.Controls.Add(logPanel, 0, 2);
+        
+        // 按钮区域
+        var buttonPanel = CreateButtonPanel();
+        mainLayout.Controls.Add(buttonPanel, 0, 3);
+        
+        Controls.Add(mainLayout);
+    }
+    
+    private GroupBox CreateApiSettingsGroup()
+    {
+        var group = new GroupBox
+        {
+            Text = "API 设置",
+            Dock = DockStyle.Fill,
+            Padding = new Padding(12),
+            Font = SystemFonts.DefaultFont,
+            AutoSize = true
+        };
+        
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount = 4,
+            AutoSize = true
+        };
+        
+        // 设置列宽
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        
+        // 设置行高
+        for (int i = 0; i < 4; i++)
+        {
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        }
+        
+        // OpenAI API Key
+        var apiKeyLabel = new Label { Text = "OpenAI API Key:", Anchor = AnchorStyles.Left, AutoSize = true, Margin = new Padding(0, 6, 10, 6) };
+        _apiKeyTextBox = new TextBox { Dock = DockStyle.Fill, UseSystemPasswordChar = true, Margin = new Padding(0, 3, 0, 3) };
+        
+        // GPT Model
+        var modelLabel = new Label { Text = "GPT 模型:", Anchor = AnchorStyles.Left, AutoSize = true, Margin = new Padding(0, 6, 10, 6) };
+        _modelCombo = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList, Margin = new Padding(0, 3, 0, 3) };
+        _modelCombo.Items.AddRange("gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "gpt-4o");
+        
+        // Azure Speech Key
+        var speechKeyLabel = new Label { Text = "Azure Speech Key:", Anchor = AnchorStyles.Left, AutoSize = true, Margin = new Padding(0, 6, 10, 6) };
+        _speechKeyTextBox = new TextBox { Dock = DockStyle.Fill, UseSystemPasswordChar = true, Margin = new Padding(0, 3, 0, 3) };
+        
+        // Region
+        var speechRegionLabel = new Label { Text = "区域:", Anchor = AnchorStyles.Left, AutoSize = true, Margin = new Padding(0, 6, 10, 6) };
+        _speechRegionTextBox = new TextBox { Dock = DockStyle.Fill, Text = "southeastasia", Margin = new Padding(0, 3, 0, 3) };
+        
+        // 添加控件到布局
+        layout.Controls.Add(apiKeyLabel, 0, 0);
+        layout.Controls.Add(_apiKeyTextBox, 1, 0);
+        layout.Controls.Add(modelLabel, 0, 1);
+        layout.Controls.Add(_modelCombo, 1, 1);
+        layout.Controls.Add(speechKeyLabel, 0, 2);
+        layout.Controls.Add(_speechKeyTextBox, 1, 2);
+        layout.Controls.Add(speechRegionLabel, 0, 3);
+        layout.Controls.Add(_speechRegionTextBox, 1, 3);
+        
+        group.Controls.Add(layout);
+        return group;
+    }
+    
+    private GroupBox CreateFunctionSettingsGroup()
+    {
+        var group = new GroupBox
+        {
+            Text = "功能设置",
+            Dock = DockStyle.Fill,
+            Padding = new Padding(12),
+            Font = SystemFonts.DefaultFont,
+            AutoSize = true
+        };
+        
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount = 5,
+            AutoSize = true
+        };
+        
+        // 设置列宽
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        
+        // 设置行高
+        for (int i = 0; i < 5; i++)
+        {
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        }
+        
+        // 快捷键设置
+        var hotkeyLabel = new Label { Text = "快捷键:", Anchor = AnchorStyles.Left, AutoSize = true, Margin = new Padding(0, 6, 10, 6) };
+        _hotkeyTextBox = new TextBox { Dock = DockStyle.Fill, ReadOnly = false, Margin = new Padding(0, 3, 0, 3) };
         _hotkeyTextBox.KeyDown += HotkeyTextBox_KeyDown;
         _hotkeyTextBox.Enter += (s, e) => _hotkeyTextBox.Text = "按下要设置的快捷键...";
         _hotkeyTextBox.Leave += (s, e) =>
         {
-            if (_hotkeyTextBox.Text == "按下要设置的快捷键...") _hotkeyTextBox.Text = _settings?.HotKey ?? "F2";
+            if (_hotkeyTextBox.Text == "按下要设置的快捷键...") _hotkeyTextBox.Text = _settings?.HotKey ?? "Ctrl+Alt+M";
         };
-
-        var hotkeyButton = new Button { Text = "设置", Location = new Point(205, 22), Size = new Size(50, 22) };
-        hotkeyButton.Click += HotkeyButton_Click;
-
-        var modeLabel = new Label { Text = "处理模式:", Location = new Point(265, 25), Size = new Size(70, 20) };
-        _processingModeCombo = new ComboBox
+        
+        // 处理模式
+        var modeLabel = new Label { Text = "处理模式:", Anchor = AnchorStyles.Left, AutoSize = true, Margin = new Padding(0, 6, 10, 6) };
+        _processingModeCombo = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList, Margin = new Padding(0, 3, 0, 3) };
+        _processingModeCombo.Items.AddRange("TranslateToEnglishEmail", "TranslateToEnglish", "FormatAsEmail", "Summarize", "CustomPrompt");
+        
+        // 录音模式
+        var recordingModeLabel = new Label { Text = "录音模式:", Anchor = AnchorStyles.Left, AutoSize = true, Margin = new Padding(0, 6, 10, 6) };
+        _recordingModeCombo = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList, Margin = new Padding(0, 3, 0, 3) };
+        _recordingModeCombo.Items.AddRange("按住录音 (Hold to Record)", "切换录音 (Toggle Record)");
+        
+        // 系统设置区域
+        var systemLabel = new Label { Text = "系统设置:", Anchor = AnchorStyles.Left, AutoSize = true, Margin = new Padding(0, 6, 10, 6) };
+        var systemPanel = new FlowLayoutPanel
         {
-            Location = new Point(335, 23),
-            Size = new Size(170, 20),
-            DropDownStyle = ComboBoxStyle.DropDownList
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.LeftToRight,
+            AutoSize = true,
+            WrapContents = true,
+            Margin = new Padding(0, 3, 0, 3)
         };
-        _processingModeCombo.Items.AddRange("TranslateToEnglishEmail","TranslateToEnglish", "FormatAsEmail", "Summarize", "CustomPrompt");
-
-        var recordingModeLabel = new Label { Text = "录音模式:", Location = new Point(10, 55), Size = new Size(70, 20) };
-        _recordingModeCombo = new ComboBox
+        
+        // 开机自启动
+        var startupCheckBox = new CheckBox
         {
-            Location = new Point(80, 53),
-            Size = new Size(120, 20),
-            DropDownStyle = ComboBoxStyle.DropDownList
+            Text = "开机自动启动",
+            AutoSize = true,
+            Margin = new Padding(0, 0, 15, 0)
         };
-        _recordingModeCombo.Items.AddRange("按住录音", "切换录音");
-
-        _testButton = new Button { Text = "测试录音", Location = new Point(10, 80), Size = new Size(80, 25) };
+        startupCheckBox.CheckedChanged += StartupCheckBox_CheckedChanged;
+        
+        // 最小化到托盘
+        var minimizeToTrayCheckBox = new CheckBox
+        {
+            Text = "启动时最小化到托盘",
+            AutoSize = true,
+            Margin = new Padding(0, 0, 15, 0)
+        };
+        minimizeToTrayCheckBox.CheckedChanged += MinimizeToTrayCheckBox_CheckedChanged;
+        
+        systemPanel.Controls.AddRange(new Control[] { startupCheckBox, minimizeToTrayCheckBox });
+        
+        // 测试按钮
+        var testLabel = new Label { Text = "测试:", Anchor = AnchorStyles.Left, AutoSize = true, Margin = new Padding(0, 6, 10, 6) };
+        _testButton = new Button 
+        { 
+            Text = "测试录音", 
+            Size = new Size(100, 30),
+            Anchor = AnchorStyles.Left,
+            Margin = new Padding(0, 3, 0, 3)
+        };
         _testButton.Click += TestButton_Click;
+        
+        // 添加控件到布局
+        layout.Controls.Add(hotkeyLabel, 0, 0);
+        layout.Controls.Add(_hotkeyTextBox, 1, 0);
+        layout.Controls.Add(modeLabel, 0, 1);
+        layout.Controls.Add(_processingModeCombo, 1, 1);
+        layout.Controls.Add(recordingModeLabel, 0, 2);
+        layout.Controls.Add(_recordingModeCombo, 1, 2);
+        layout.Controls.Add(systemLabel, 0, 3);
+        layout.Controls.Add(systemPanel, 1, 3);
+        layout.Controls.Add(testLabel, 0, 4);
+        layout.Controls.Add(_testButton, 1, 4);
+        
+        group.Controls.Add(layout);
+        
+        // 保存复选框引用以便后续使用
+        group.Tag = new { StartupCheckBox = startupCheckBox, MinimizeToTrayCheckBox = minimizeToTrayCheckBox };
+        
+        return group;
+    }
+    
 
-        funcGroup.Controls.AddRange(hotkeyLabel, _hotkeyTextBox, hotkeyButton, modeLabel, _processingModeCombo,
-            recordingModeLabel, _recordingModeCombo, _testButton);
-
-        // 状态显示
+    
+    private Panel CreateLogPanel()
+    {
+        var panel = new Panel { Dock = DockStyle.Fill };
+        
+        // 状态标签
         _statusLabel = new Label
         {
             Text = "状态: 就绪",
-            Location = new Point(10, 260),
-            Size = new Size(560, 20),
-            ForeColor = Color.Green
+            Dock = DockStyle.Top,
+            Height = 25,
+            ForeColor = SystemColors.ControlText,
+            Font = SystemFonts.DefaultFont,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Padding = new Padding(5)
         };
-
-        // 日志显示
-        var logLabel = new Label { Text = "处理日志:", Location = new Point(10, 290), Size = new Size(100, 20) };
-        _logListBox = new ListBox { Location = new Point(10, 315), Size = new Size(560, 150) };
-
-        // 按钮区域
-        var buttonPanel = new Panel { Location = new Point(10, 475), Size = new Size(560, 40) };
-
-        var saveButton = new Button { Text = "保存设置", Location = new Point(280, 5), Size = new Size(80, 30) };
-        saveButton.Click += SaveButton_Click;
-
-        var exitButton = new Button { Text = "退出", Location = new Point(370, 5), Size = new Size(80, 30) };
+        
+        // 日志标签
+        var logLabel = new Label 
+        { 
+            Text = "处理日志:", 
+            Dock = DockStyle.Top, 
+            Height = 20,
+            Font = SystemFonts.DefaultFont,
+            ForeColor = SystemColors.ControlText,
+            TextAlign = ContentAlignment.BottomLeft,
+            Padding = new Padding(5, 5, 5, 2)
+        };
+        
+        // 日志列表
+        _logListBox = new ListBox 
+        { 
+            Dock = DockStyle.Fill,
+            Font = new Font("Consolas", 8.5F),
+            BackColor = SystemColors.Window,
+            BorderStyle = BorderStyle.Fixed3D
+        };
+        
+        panel.Controls.Add(_logListBox);
+        panel.Controls.Add(logLabel);
+        panel.Controls.Add(_statusLabel);
+        
+        return panel;
+    }
+    
+    private Panel CreateButtonPanel()
+    {
+        var panel = new Panel 
+        { 
+            Dock = DockStyle.Fill, 
+            Height = 45,
+            Padding = new Padding(0, 8, 0, 0)
+        };
+        
+        var layout = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.RightToLeft,
+            AutoSize = true
+        };
+        
+        // 退出按钮
+        var exitButton = new Button 
+        { 
+            Text = "退出", 
+            Size = new Size(80, 30),
+            Font = SystemFonts.DefaultFont,
+            Margin = new Padding(5, 0, 0, 0)
+        };
         exitButton.Click += (s, e) => Application.Exit();
-
-        var minimizeButton = new Button { Text = "最小化到托盘", Location = new Point(160, 5), Size = new Size(110, 30) };
+        
+        // 保存设置按钮
+        var saveButton = new Button 
+        { 
+            Text = "保存设置", 
+            Size = new Size(80, 30),
+            Font = SystemFonts.DefaultFont,
+            Margin = new Padding(5, 0, 0, 0)
+        };
+        saveButton.Click += SaveButton_Click;
+        
+        // 最小化到托盘按钮
+        var minimizeButton = new Button 
+        { 
+            Text = "最小化到托盘", 
+            Size = new Size(100, 30),
+            Font = SystemFonts.DefaultFont,
+            Margin = new Padding(5, 0, 0, 0)
+        };
         minimizeButton.Click += (s, e) => { Hide(); };
-
-        buttonPanel.Controls.AddRange(minimizeButton, saveButton, exitButton);
-
-        Controls.AddRange(apiGroup, funcGroup, _statusLabel, logLabel, _logListBox, buttonPanel);
+        
+        layout.Controls.AddRange(new Control[] { exitButton, saveButton, minimizeButton });
+        panel.Controls.Add(layout);
+        
+        return panel;
     }
 
-    private void LayoutControls()
+    // 系统设置复选框事件处理
+    private void StartupCheckBox_CheckedChanged(object? sender, EventArgs e)
     {
-        // 控件布局已在CreateControls中完成
+        if (sender is CheckBox checkBox && _settings != null)
+        {
+            _settings.StartWithWindows = checkBox.Checked;
+            SetStartupRegistry(checkBox.Checked);
+        }
+    }
+    
+    private void MinimizeToTrayCheckBox_CheckedChanged(object? sender, EventArgs e)
+    {
+        if (sender is CheckBox checkBox && _settings != null)
+        {
+            _settings.MinimizeToTray = checkBox.Checked;
+            ConfigManager.SaveSettings(_settings); // 保存设置到文件
+            AddLog($"启动时最小化到托盘: {(checkBox.Checked ? "已启用" : "已禁用")}");
+        }
+    }
+    
+
+    
+    // 设置开机自启动
+    private void SetStartupRegistry(bool enable)
+    {
+        try
+        {
+            const string keyName = "Speech2TextAssistant";
+            using var key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
+            
+            if (enable)
+            {
+                var exePath = Application.ExecutablePath;
+                key?.SetValue(keyName, $"\"{exePath}\"");
+                AddLog("已设置开机自动启动");
+            }
+            else
+            {
+                key?.DeleteValue(keyName, false);
+                AddLog("已取消开机自动启动");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLog($"设置开机自启动失败: {ex.Message}");
+            UpdateStatus($"设置开机自启动失败: {ex.Message}", Color.Red);
+        }
+    }
+    
+    // 检查是否已设置开机自启动
+    private bool IsStartupEnabled()
+    {
+        try
+        {
+            const string keyName = "Speech2TextAssistant";
+            using var key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", false);
+            return key?.GetValue(keyName) != null;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     // 在 InitializeServices 方法中
@@ -335,6 +613,7 @@ public class MainForm : Form
         
         try
         {
+            _recordingOverlay?.ClearRecognizedText(); // 清除识别文字
             _recordingOverlay?.Hide();
         }
         catch (Exception ex)
@@ -347,7 +626,7 @@ public class MainForm : Form
     private void OnPartialResultReceived(object? sender, string partialText)
     {
         Invoke(() => { UpdateStatus($"识别中: {partialText}", Color.Orange); });
-        _recordingOverlay?.UpdateText(partialText);
+        _recordingOverlay?.UpdateRecognizedText(partialText);
     }
 
     // 修改识别完成事件处理
@@ -426,10 +705,10 @@ public class MainForm : Form
             _settings.ModelName = _modelCombo.Text;
             _settings.DefaultProcessingMode = _processingModeCombo.Text;
             _settings.RecordingMode = _recordingModeCombo.SelectedIndex == 0 ? "HoldToRecord" : "ToggleRecord";
-        }
-
-        if (_settings != null)
+            
+            // 保存系统设置（复选框状态已在事件处理中更新）
             ConfigManager.SaveSettings(_settings);
+        }
 
         // 重新注册快捷键
         _hotkeyService?.UnregisterHotkey();
@@ -439,6 +718,8 @@ public class MainForm : Form
         InitializeAPIs();
 
         MessageBox.Show("设置已保存", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        UpdateStatus("设置已保存", Color.FromArgb(40, 167, 69));
+        AddLog("配置设置已保存");
     }
 
     private void SetupTrayIcon()
@@ -490,14 +771,41 @@ public class MainForm : Form
 
         _apiKeyTextBox.Text = _settings.OpenAIApiKey ?? "";
         _speechKeyTextBox.Text = _settings.AzureSpeechKey ?? "";
-        _speechRegionTextBox.Text = _settings.AzureSpeechRegion ?? "eastus";
-        _hotkeyTextBox.Text = _settings.HotKey ?? "F2";
+        _speechRegionTextBox.Text = _settings.AzureSpeechRegion ?? "southeastasia";
+        _hotkeyTextBox.Text = _settings.HotKey ?? "Ctrl+Alt+M";
         _modelCombo.Text = _settings.ModelName ?? "gpt-3.5-turbo";
         _processingModeCombo.Text = _settings.DefaultProcessingMode ?? "TranslateToEnglish";
         _recordingModeCombo.SelectedIndex = _settings.RecordingMode == "ToggleRecord" ? 1 : 0;
+        
+        // 加载系统设置到复选框
+        LoadSystemSettings();
 
         RegisterHotkey();
         InitializeAPIs();
+    }
+    
+    private void LoadSystemSettings()
+    {
+        // 查找功能设置组中的复选框
+        var funcGroup = Controls.OfType<TableLayoutPanel>().FirstOrDefault()?.Controls.OfType<GroupBox>()
+            .FirstOrDefault(g => g.Text == "功能设置");
+        
+        if (funcGroup?.Tag is { } tag)
+        {
+            var properties = tag.GetType().GetProperties();
+            var startupCheckBox = properties.FirstOrDefault(p => p.Name == "StartupCheckBox")?.GetValue(tag) as CheckBox;
+            var minimizeToTrayCheckBox = properties.FirstOrDefault(p => p.Name == "MinimizeToTrayCheckBox")?.GetValue(tag) as CheckBox;
+            
+            if (startupCheckBox != null)
+            {
+                startupCheckBox.Checked = _settings?.StartWithWindows == true || IsStartupEnabled();
+            }
+            
+            if (minimizeToTrayCheckBox != null)
+            {
+                minimizeToTrayCheckBox.Checked = _settings?.MinimizeToTray == true;
+            }
+        }
     }
 
     private void RegisterHotkey()
@@ -660,7 +968,6 @@ public class MainForm : Form
         {
             e.Cancel = true;
             Hide();
-            _notifyIcon?.ShowBalloonTip(2000, "语音转文字助手", "程序已最小化到系统托盘", ToolTipIcon.Info);
             return;
         }
 

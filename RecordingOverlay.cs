@@ -12,6 +12,7 @@ public class RecordingOverlay : Form
     private readonly float[] _waveHeights = new float[20];
     private int _waveOffset;
     private string _currentText = "正在录音中...";
+    private string _recognizedText = "";
 
     public RecordingOverlay()
     {
@@ -33,12 +34,13 @@ public class RecordingOverlay : Form
         AutoScaleDimensions = new SizeF(7F, 17F);
         AutoScaleMode = AutoScaleMode.Font;
         BackColor = Color.Black;
-        ClientSize = new Size(350, 131);
+        ClientSize = new Size(400, 120);
         FormBorderStyle = FormBorderStyle.None;
         Margin = new Padding(4, 4, 4, 4);
         ShowInTaskbar = false;
         TopMost = true;
         TransparencyKey = Color.Black;
+        Opacity = 0.9;
         Load += RecordingOverlay_Load;
         ResumeLayout(false);
     }
@@ -95,19 +97,60 @@ public class RecordingOverlay : Form
         var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
 
-        // 绘制背景
-        using (var brush = new SolidBrush(Color.FromArgb(180, 0, 0, 0)))
+        // 绘制半透明背景
+        using (var brush = new SolidBrush(Color.FromArgb(220, 30, 30, 30)))
         {
             g.FillRoundedRectangle(brush, new Rectangle(10, 10, Width - 20, Height - 20), 15);
         }
 
-        // 绘制"正在录音"文字
+        // 绘制"正在录音"文字（如果太长则截取最新内容）
         using (var font = new Font("微软雅黑", 12, FontStyle.Bold))
         using (var brush = new SolidBrush(Color.White))
         {
-            var textSize = g.MeasureString(_currentText, font);
-            var textX = (Width - textSize.Width) / 2;
-            g.DrawString(_currentText, font, brush, textX, 15);
+            var displayText = !string.IsNullOrEmpty(_recognizedText) ? _recognizedText : _currentText;
+            
+            // 如果文字太长，只保留最新的内容
+            var maxWidth = Width - 40;
+            var textSize = g.MeasureString(displayText, font);
+            
+            if (textSize.Width > maxWidth)
+            {
+                // 从后往前截取文字，确保显示最新内容
+                var words = displayText.Split(' ');
+                var truncatedText = "";
+                
+                for (int i = words.Length - 1; i >= 0; i--)
+                {
+                    var testText = words[i] + (string.IsNullOrEmpty(truncatedText) ? "" : " " + truncatedText);
+                    var testSize = g.MeasureString(testText, font);
+                    
+                    if (testSize.Width <= maxWidth)
+                    {
+                        truncatedText = testText;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                
+                // 如果截取后仍然为空或太长，则直接截取字符
+                if (string.IsNullOrEmpty(truncatedText) || g.MeasureString(truncatedText, font).Width > maxWidth)
+                {
+                    truncatedText = displayText;
+                    while (g.MeasureString(truncatedText, font).Width > maxWidth && truncatedText.Length > 1)
+                    {
+                        truncatedText = truncatedText.Substring(1);
+                    }
+                }
+                
+                displayText = truncatedText;
+            }
+            
+            var finalTextSize = g.MeasureString(displayText, font);
+            var textX = (Width - finalTextSize.Width) / 2;
+            
+            g.DrawString(displayText, font, brush, textX, 15);
         }
 
         // 绘制音波
@@ -137,9 +180,37 @@ public class RecordingOverlay : Form
     {
         if (!string.IsNullOrWhiteSpace(text))
         {
-            _currentText = $"{text}";
+            _recognizedText = text;
             Invalidate(); // 触发重绘
         }
+    }
+
+    public void UpdateRecognizedText(string text)
+    {
+        if (InvokeRequired)
+        {
+            Invoke(new Action<string>(UpdateRecognizedText), text);
+            return;
+        }
+        
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            _recognizedText = text;
+            Invalidate(); // 触发重绘
+        }
+    }
+    
+    // 清除识别文字，恢复默认显示
+    public void ClearRecognizedText()
+    {
+        if (InvokeRequired)
+        {
+            Invoke(ClearRecognizedText);
+            return;
+        }
+        
+        _recognizedText = "";
+        Invalidate();
     }
 
     public void StopAnimation()

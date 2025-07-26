@@ -11,4 +11,7 @@ public class AppSettings
     public bool PlaySounds { get; set; } = true;
     public int RecordingTimeoutSeconds { get; set; } = 30;
     public string RecordingMode { get; set; } = "HoldToRecord"; // HoldToRecord 或 ToggleRecord
+    public bool StartWithWindows { get; set; } = false;
+    public bool MinimizeToTray { get; set; } = true;
+    public bool ShowTrayNotifications { get; set; } = false;
 }

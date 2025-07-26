@@ -67,7 +67,10 @@ public class ConfigManager
                 AzureSpeechRegion = settings.AzureSpeechRegion,
                 PlaySounds = settings.PlaySounds,
                 RecordingTimeoutSeconds = settings.RecordingTimeoutSeconds,
-                RecordingMode = settings.RecordingMode
+                RecordingMode = settings.RecordingMode,
+                StartWithWindows = settings.StartWithWindows,
+                MinimizeToTray = settings.MinimizeToTray,
+                ShowTrayNotifications = settings.ShowTrayNotifications
             };
 
             var json = JsonSerializer.Serialize(settingsToSave, JsonOptions);

@@ -13,5 +13,11 @@
         <PackageReference Include="Microsoft.CognitiveServices.Speech" Version="1.40.0"/>
         <PackageReference Include="System.Text.Json" Version="9.0.0"/>
     </ItemGroup>
+    
+    <ItemGroup>
+        <Compile Remove="cpp\**" />
+        <EmbeddedResource Remove="cpp\**" />
+        <None Remove="cpp\**" />
+    </ItemGroup>
 
 </Project>
