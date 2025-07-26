@@ -66,7 +66,8 @@ public class ConfigManager
                     : EncryptString(settings.AzureSpeechKey),
                 AzureSpeechRegion = settings.AzureSpeechRegion,
                 PlaySounds = settings.PlaySounds,
-                RecordingTimeoutSeconds = settings.RecordingTimeoutSeconds
+                RecordingTimeoutSeconds = settings.RecordingTimeoutSeconds,
+                RecordingMode = settings.RecordingMode
             };
 
             var json = JsonSerializer.Serialize(settingsToSave, JsonOptions);

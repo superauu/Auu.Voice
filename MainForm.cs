@@ -15,6 +15,8 @@ public class MainForm : Form
     private ComboBox _modelCombo = null!;
     private NotifyIcon? _notifyIcon;
     private ComboBox _processingModeCombo = null!;
+    private ComboBox _recordingModeCombo = null!;
+    private bool _isToggleRecording = false; // 用于跟踪切换模式下的录音状态
     private RecordingOverlay? _recordingOverlay;
     private AppSettings? _settings;
     private TextBox _speechKeyTextBox = null!;
@@ -27,7 +29,7 @@ public class MainForm : Form
     {
         InitializeComponent();
         CreateControls();
-        Size = new Size(600, 530);
+        Size = new Size(600, 560);
         FormBorderStyle = FormBorderStyle.FixedSingle;
         MaximizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
@@ -102,7 +104,7 @@ public class MainForm : Form
             _speechRegionTextBox, modelLabel, _modelCombo);
 
         // 功能设置组
-        var funcGroup = new GroupBox { Text = "功能设置", Location = new Point(10, 140), Size = new Size(560, 80) };
+        var funcGroup = new GroupBox { Text = "功能设置", Location = new Point(10, 140), Size = new Size(560, 110) };
 
         var hotkeyLabel = new Label { Text = "快捷键:", Location = new Point(10, 25), Size = new Size(60, 20) };
         _hotkeyTextBox = new TextBox { Location = new Point(80, 23), Size = new Size(120, 20), ReadOnly = false };
@@ -125,27 +127,36 @@ public class MainForm : Form
         };
         _processingModeCombo.Items.AddRange("TranslateToEnglishEmail","TranslateToEnglish", "FormatAsEmail", "Summarize", "CustomPrompt");
 
-        _testButton = new Button { Text = "测试录音", Location = new Point(10, 50), Size = new Size(80, 25) };
+        var recordingModeLabel = new Label { Text = "录音模式:", Location = new Point(10, 55), Size = new Size(70, 20) };
+        _recordingModeCombo = new ComboBox
+        {
+            Location = new Point(80, 53),
+            Size = new Size(120, 20),
+            DropDownStyle = ComboBoxStyle.DropDownList
+        };
+        _recordingModeCombo.Items.AddRange("按住录音", "切换录音");
+
+        _testButton = new Button { Text = "测试录音", Location = new Point(10, 80), Size = new Size(80, 25) };
         _testButton.Click += TestButton_Click;
 
         funcGroup.Controls.AddRange(hotkeyLabel, _hotkeyTextBox, hotkeyButton, modeLabel, _processingModeCombo,
-            _testButton);
+            recordingModeLabel, _recordingModeCombo, _testButton);
 
         // 状态显示
         _statusLabel = new Label
         {
             Text = "状态: 就绪",
-            Location = new Point(10, 230),
+            Location = new Point(10, 260),
             Size = new Size(560, 20),
             ForeColor = Color.Green
         };
 
         // 日志显示
-        var logLabel = new Label { Text = "处理日志:", Location = new Point(10, 260), Size = new Size(100, 20) };
-        _logListBox = new ListBox { Location = new Point(10, 285), Size = new Size(560, 150) };
+        var logLabel = new Label { Text = "处理日志:", Location = new Point(10, 290), Size = new Size(100, 20) };
+        _logListBox = new ListBox { Location = new Point(10, 315), Size = new Size(560, 150) };
 
         // 按钮区域
-        var buttonPanel = new Panel { Location = new Point(10, 445), Size = new Size(560, 40) };
+        var buttonPanel = new Panel { Location = new Point(10, 475), Size = new Size(560, 40) };
 
         var saveButton = new Button { Text = "保存设置", Location = new Point(280, 5), Size = new Size(80, 30) };
         saveButton.Click += SaveButton_Click;
@@ -193,12 +204,6 @@ public class MainForm : Form
                 return;
             }
             
-            // 检查是否已经在录音
-            if (_speechService?.IsRecording == true)
-            {
-                return;
-            }
-            
             // 检查设置是否已加载
             if (_settings == null)
             {
@@ -220,16 +225,47 @@ public class MainForm : Form
                 return;
             }
             
-            _speechService.Initialize(_settings.AzureSpeechKey, _settings.AzureSpeechRegion ?? "eastus");
-            
-            UpdateStatus("开始录音...", Color.Orange);
-            ShowRecordingOverlay();
-            await _speechService.StartContinuousRecognitionAsync();
+            // 根据录音模式处理
+            if (_settings.RecordingMode == "ToggleRecord")
+            {
+                // 切换模式：按一次开始，再按一次停止
+                if (!_isToggleRecording && _speechService?.IsRecording != true)
+                {
+                    // 开始录音
+                    _isToggleRecording = true;
+                    _speechService?.Initialize(_settings.AzureSpeechKey, _settings.AzureSpeechRegion ?? "eastus");
+                    UpdateStatus("开始录音...", Color.Orange);
+                    ShowRecordingOverlay();
+                    await (_speechService?.StartContinuousRecognitionAsync() ?? Task.CompletedTask);
+                }
+                else if (_isToggleRecording && _speechService?.IsRecording == true)
+                {
+                    // 停止录音
+                    _isToggleRecording = false;
+                    UpdateStatus("录音结束，正在处理...", Color.Blue);
+                    HideRecordingOverlay();
+                    await (_speechService?.StopContinuousRecognitionAsync() ?? Task.CompletedTask);
+                }
+            }
+            else
+            {
+                // 按住模式：只在按下时开始录音
+                if (_speechService?.IsRecording == true)
+                {
+                    return;
+                }
+                
+                _speechService?.Initialize(_settings.AzureSpeechKey, _settings.AzureSpeechRegion ?? "eastus");
+                UpdateStatus("开始录音...", Color.Orange);
+                ShowRecordingOverlay();
+                await (_speechService?.StartContinuousRecognitionAsync() ?? Task.CompletedTask);
+            }
         }
         catch (Exception ex)
         {
             UpdateStatus($"启动录音失败: {ex.Message}", Color.Red);
             AddLog($"快捷键录音错误: {ex.Message}");
+            _isToggleRecording = false;
         }
     }
 
@@ -244,12 +280,18 @@ public class MainForm : Form
                 return;
             }
             
+            // 只在按住模式下响应松开事件
+            if (_settings?.RecordingMode != "HoldToRecord")
+            {
+                return;
+            }
+            
             // 检查语音服务状态
             if (_speechService?.IsRecording == true)
             {
                 UpdateStatus("录音结束，正在处理...", Color.Blue);
                 HideRecordingOverlay();
-                await _speechService.StopContinuousRecognitionAsync();
+                await (_speechService?.StopContinuousRecognitionAsync() ?? Task.CompletedTask);
             }
         }
         catch (Exception ex)
@@ -383,6 +425,7 @@ public class MainForm : Form
             _settings.HotKey = _hotkeyTextBox.Text;
             _settings.ModelName = _modelCombo.Text;
             _settings.DefaultProcessingMode = _processingModeCombo.Text;
+            _settings.RecordingMode = _recordingModeCombo.SelectedIndex == 0 ? "HoldToRecord" : "ToggleRecord";
         }
 
         if (_settings != null)
@@ -451,6 +494,7 @@ public class MainForm : Form
         _hotkeyTextBox.Text = _settings.HotKey ?? "F2";
         _modelCombo.Text = _settings.ModelName ?? "gpt-3.5-turbo";
         _processingModeCombo.Text = _settings.DefaultProcessingMode ?? "TranslateToEnglish";
+        _recordingModeCombo.SelectedIndex = _settings.RecordingMode == "ToggleRecord" ? 1 : 0;
 
         RegisterHotkey();
         InitializeAPIs();

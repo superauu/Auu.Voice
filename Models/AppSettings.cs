@@ -10,4 +10,5 @@ public class AppSettings
     public string AzureSpeechRegion { get; set; } = "";
     public bool PlaySounds { get; set; } = true;
     public int RecordingTimeoutSeconds { get; set; } = 30;
+    public string RecordingMode { get; set; } = "HoldToRecord"; // HoldToRecord 或 ToggleRecord
 }
