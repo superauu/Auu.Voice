@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Speech2TextAssistant")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f815d83cae0b582187e4bf1bb9acc4806cb14ad3")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f6981bddef6e8942cc80e16bab3e9cb36e745658")]
 [assembly: System.Reflection.AssemblyProductAttribute("Speech2TextAssistant")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Speech2TextAssistant")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
