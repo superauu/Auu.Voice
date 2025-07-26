@@ -95,3 +95,4 @@ E:\code\AuuVoice\obj\Debug\net9.0-windows\refint\Speech2TextAssistant.dll
 E:\code\AuuVoice\obj\Debug\net9.0-windows\Speech2TextAssistant.pdb
 E:\code\AuuVoice\obj\Debug\net9.0-windows\Speech2TextAssistant.genruntimeconfig.cache
 E:\code\AuuVoice\obj\Debug\net9.0-windows\ref\Speech2TextAssistant.dll
+E:\code\AuuVoice\obj\Debug\net9.0-windows\Speech2TextAssistant.sourcelink.json

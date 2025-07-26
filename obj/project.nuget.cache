@@ -1,15 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "hQUrrqEdP1A=",
+  "dgSpecHash": "dZyy+QeXPNA=",
   "success": true,
   "projectFilePath": "E:\\code\\AuuVoice\\Speech2TextAssistant.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\super\\.nuget\\packages\\microsoft.cognitiveservices.speech\\1.40.0\\microsoft.cognitiveservices.speech.1.40.0.nupkg.sha512",
-    "C:\\Users\\super\\.nuget\\packages\\microsoft.net.illink.tasks\\9.0.7\\microsoft.net.illink.tasks.9.0.7.nupkg.sha512",
-    "C:\\Users\\super\\.nuget\\packages\\system.text.json\\9.0.0\\system.text.json.9.0.0.nupkg.sha512",
-    "C:\\Users\\super\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\9.0.7\\microsoft.netcore.app.runtime.win-x64.9.0.7.nupkg.sha512",
-    "C:\\Users\\super\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\9.0.7\\microsoft.windowsdesktop.app.runtime.win-x64.9.0.7.nupkg.sha512",
-    "C:\\Users\\super\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\9.0.7\\microsoft.aspnetcore.app.runtime.win-x64.9.0.7.nupkg.sha512"
+    "C:\\Users\\super\\.nuget\\packages\\system.text.json\\9.0.0\\system.text.json.9.0.0.nupkg.sha512"
   ],
   "logs": []
 }

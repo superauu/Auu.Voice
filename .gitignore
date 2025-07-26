@@ -326,3 +326,6 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
+bin/Debug/net9.0-windows/Speech2TextAssistant.dll
+bin/Debug/net9.0-windows/Speech2TextAssistant.exe
+bin/Debug/net9.0-windows/Speech2TextAssistant.pdb
