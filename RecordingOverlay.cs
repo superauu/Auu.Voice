@@ -11,12 +11,11 @@ public class RecordingOverlay : Form
     private readonly Random _random = new();
     private readonly float[] _waveHeights = new float[20];
     private int _waveOffset;
-    private string _currentText = "🎤 正在录音中...";
+    private string _currentText = "正在录音中...";
 
     public RecordingOverlay()
     {
         InitializeComponent();
-        // SetupForm();
         InitializeWaveData();
         StartAnimation();
     }
@@ -138,7 +137,7 @@ public class RecordingOverlay : Form
     {
         if (!string.IsNullOrWhiteSpace(text))
         {
-            _currentText = $"🎤 {text}";
+            _currentText = $"{text}";
             Invalidate(); // 触发重绘
         }
     }

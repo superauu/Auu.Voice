@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.ComponentModel;
 
 namespace Speech2TextAssistant;
 
@@ -45,27 +46,80 @@ public class OutputSimulator
     {
         try
         {
-            // 备份当前剪贴板内容
-            var originalClipboard = "";
-            if (Clipboard.ContainsText()) originalClipboard = Clipboard.GetText();
-
-            // 将文本放入剪贴板
-            Clipboard.SetText(text);
-
-            // 短暂延迟确保剪贴板操作完成
-            await Task.Delay(50);
-
-            // 发送Ctrl+V粘贴
-            SendKeys.SendWait("^v");
-
-            // 延迟后恢复原剪贴板内容
-            await Task.Delay(500);
-            if (!string.IsNullOrEmpty(originalClipboard)) Clipboard.SetText(originalClipboard);
+            await Task.Run(() =>
+            {
+                // 在STA线程中执行剪贴板操作
+                var staThread = new Thread(() =>
+                {
+                    try
+                    {
+                        SetClipboardWithRetry(text);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"粘贴文本失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                });
+                
+                staThread.SetApartmentState(ApartmentState.STA);
+                staThread.Start();
+                staThread.Join();
+            });
         }
         catch (Exception ex)
         {
             MessageBox.Show($"粘贴文本失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
+    }
+
+    private static void SetClipboardWithRetry(string text)
+    {
+        const int maxRetries = 3;
+        var originalClipboard = "";
+        
+        for (int i = 0; i < maxRetries; i++)
+        {
+            try
+            {
+                // 备份当前剪贴板内容
+                if (Clipboard.ContainsText())
+                {
+                    originalClipboard = Clipboard.GetText();
+                }
+
+                // 清空剪贴板
+                Clipboard.Clear();
+                Thread.Sleep(10);
+
+                // 将文本放入剪贴板
+                Clipboard.SetText(text, TextDataFormat.UnicodeText);
+                Thread.Sleep(50);
+
+                // 验证剪贴板内容
+                if (Clipboard.ContainsText() && Clipboard.GetText() == text)
+                {
+                    // 发送Ctrl+V粘贴
+                    SendKeys.SendWait("^v");
+                    Thread.Sleep(100);
+
+                    // 延迟后恢复原剪贴板内容
+                    Thread.Sleep(400);
+                    if (!string.IsNullOrEmpty(originalClipboard))
+                    {
+                        Clipboard.SetText(originalClipboard, TextDataFormat.UnicodeText);
+                    }
+                    return; // 成功，退出重试循环
+                }
+            }
+            catch (ExternalException)
+            {
+                // 剪贴板被其他进程占用，等待后重试
+                Thread.Sleep(100);
+                if (i == maxRetries - 1) throw;
+            }
+        }
+        
+        throw new InvalidOperationException("无法访问剪贴板，请稍后重试");
     }
 
     // 保持向后兼容的同步方法

@@ -32,11 +32,23 @@ public class MainForm : Form
         MaximizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         Text = "语音转文字助手";
-        Icon = SystemIcons.Exclamation; // 设置程序图标
 
         InitializeServices();
         LoadSettings();
         SetupTrayIcon();
+        
+        // 确保窗口完全加载后再启用快捷键
+        this.Load += MainForm_Load;
+    }
+    
+    private void MainForm_Load(object? sender, EventArgs e)
+    {
+        // 窗口加载完成后，确保所有服务都已正确初始化
+        if (!string.IsNullOrEmpty(_settings?.HotKey))
+        {
+            _hotkeyService?.UnregisterHotkey();
+            _hotkeyService?.RegisterHotkey(Handle, _settings.HotKey);
+        }
     }
 
     /// <summary>
@@ -84,7 +96,7 @@ public class MainForm : Form
             Size = new Size(150, 20),
             DropDownStyle = ComboBoxStyle.DropDownList
         };
-        _modelCombo.Items.AddRange("gpt-3.5-turbo", "gpt-4", "gpt-4-turbo");
+        _modelCombo.Items.AddRange("gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "gpt-4o");
 
         apiGroup.Controls.AddRange(apiKeyLabel, _apiKeyTextBox, speechKeyLabel, _speechKeyTextBox, speechRegionLabel,
             _speechRegionTextBox, modelLabel, _modelCombo);
@@ -108,10 +120,10 @@ public class MainForm : Form
         _processingModeCombo = new ComboBox
         {
             Location = new Point(335, 23),
-            Size = new Size(140, 20),
+            Size = new Size(170, 20),
             DropDownStyle = ComboBoxStyle.DropDownList
         };
-        _processingModeCombo.Items.AddRange("TranslateToEnglish", "FormatAsEmail", "Summarize", "CustomPrompt");
+        _processingModeCombo.Items.AddRange("TranslateToEnglishEmail","TranslateToEnglish", "FormatAsEmail", "Summarize", "CustomPrompt");
 
         _testButton = new Button { Text = "测试录音", Location = new Point(10, 50), Size = new Size(80, 25) };
         _testButton.Click += TestButton_Click;
@@ -173,34 +185,120 @@ public class MainForm : Form
     // 修改按键按下事件处理
     private async void OnHotkeyPressed(object? sender, EventArgs e)
     {
-        if (_speechService?.IsRecording != true)
+        try
         {
+            // 检查窗口是否已完全加载
+            if (!this.IsHandleCreated || this.IsDisposed)
+            {
+                return;
+            }
+            
+            // 检查是否已经在录音
+            if (_speechService?.IsRecording == true)
+            {
+                return;
+            }
+            
+            // 检查设置是否已加载
+            if (_settings == null)
+            {
+                UpdateStatus("设置未加载，请稍后再试", Color.Red);
+                return;
+            }
+            
+            // 检查语音服务是否已初始化
+            if (string.IsNullOrEmpty(_settings.AzureSpeechKey))
+            {
+                UpdateStatus("请先设置Azure Speech Key", Color.Red);
+                return;
+            }
+            
+            // 确保语音服务已初始化
+            if (_speechService == null)
+            {
+                UpdateStatus("语音服务未初始化", Color.Red);
+                return;
+            }
+            
+            _speechService.Initialize(_settings.AzureSpeechKey, _settings.AzureSpeechRegion ?? "eastus");
+            
             UpdateStatus("开始录音...", Color.Orange);
             ShowRecordingOverlay();
-            await (_speechService?.StartContinuousRecognitionAsync() ?? Task.CompletedTask);
+            await _speechService.StartContinuousRecognitionAsync();
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus($"启动录音失败: {ex.Message}", Color.Red);
+            AddLog($"快捷键录音错误: {ex.Message}");
         }
     }
 
     // 新增按键松开事件处理
     private async void OnHotkeyReleased(object? sender, EventArgs e)
     {
-        if (_speechService?.IsRecording == true)
+        try
         {
-            UpdateStatus("录音结束，正在处理...", Color.Blue);
-            HideRecordingOverlay();
-            await (_speechService?.StopContinuousRecognitionAsync() ?? Task.CompletedTask);
+            // 检查窗口是否已完全加载
+            if (!this.IsHandleCreated || this.IsDisposed)
+            {
+                return;
+            }
+            
+            // 检查语音服务状态
+            if (_speechService?.IsRecording == true)
+            {
+                UpdateStatus("录音结束，正在处理...", Color.Blue);
+                HideRecordingOverlay();
+                await _speechService.StopContinuousRecognitionAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus($"停止录音失败: {ex.Message}", Color.Red);
+            AddLog($"快捷键停止录音错误: {ex.Message}");
+            HideRecordingOverlay(); // 确保覆盖层被隐藏
         }
     }
 
     private void ShowRecordingOverlay()
     {
-        if (_recordingOverlay == null || _recordingOverlay.IsDisposed) _recordingOverlay = new RecordingOverlay();
-        _recordingOverlay.Show();
+        if (InvokeRequired)
+        {
+            Invoke(ShowRecordingOverlay);
+            return;
+        }
+        
+        try
+        {
+            if (_recordingOverlay == null || _recordingOverlay.IsDisposed) 
+            {
+                _recordingOverlay = new RecordingOverlay();
+            }
+            _recordingOverlay.Show();
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus($"显示录音窗口失败: {ex.Message}", Color.Red);
+            AddLog($"显示录音窗口错误: {ex.Message}");
+        }
     }
 
     private void HideRecordingOverlay()
     {
-        _recordingOverlay?.Hide();
+        if (InvokeRequired)
+        {
+            Invoke(HideRecordingOverlay);
+            return;
+        }
+        
+        try
+        {
+            _recordingOverlay?.Hide();
+        }
+        catch (Exception ex)
+        {
+            AddLog($"隐藏录音窗口错误: {ex.Message}");
+        }
     }
 
     // 新增实时识别结果显示
@@ -304,7 +402,7 @@ public class MainForm : Form
     {
         _notifyIcon = new NotifyIcon
         {
-            Icon = SystemIcons.Exclamation,
+            Icon = this.Icon,
             Text = "语音转文字助手",
             Visible = true
         };

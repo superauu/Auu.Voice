@@ -27,6 +27,12 @@ public class SpeechRecognizerService
     public async Task StartContinuousRecognitionAsync()
     {
         if (IsRecording) return;
+        
+        if (_speechConfig == null)
+        {
+            RecognitionFailed?.Invoke(this, "语音服务未初始化，请先设置Azure Speech Key");
+            return;
+        }
 
         try
         {
