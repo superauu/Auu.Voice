@@ -18,6 +18,7 @@ public:
     bool playSounds = true;
     int recordingTimeoutSeconds = 30;
     QString recordingMode = "HoldToRecord"; // HoldToRecord 或 ToggleRecord
+    bool autoStart = false; // 开机自启动
     
     // Methods
     void reset();

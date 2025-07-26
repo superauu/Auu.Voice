@@ -114,7 +114,7 @@ QString PromptTemplates::getSystemPrompt(ChatGptPromptType type)
             return "You are a professional translator. Translate the following text to English. Keep the meaning accurate and natural.";
             
         case ChatGptPromptType::TranslateToEnglishEmail:
-            return "You are a professional translator. Translate the following email content to English. Keep the meaning accurate and natural. Since the content I provided is quite colloquial, please remove any informal expressions such as filler words (e.g., \"um,\" \"ah\") and make the email more formal and professional. No need to add extra information, just process the text I provide.";
+            return "You are a professional translator. Translate the following text into formal, professional English. Remove informal or filler words. Do not add anything beyond the given content—no titles, sign-offs, or extra information.";
             
         case ChatGptPromptType::FormatAsEmail:
             return "You are an email writing assistant. Format the following content into a professional email format with proper greeting, body, and closing.";

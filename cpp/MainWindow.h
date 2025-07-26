@@ -20,6 +20,9 @@
 #include <QMessageBox>
 #include <QDateTime>
 #include <QKeyEvent>
+#include <QCheckBox>
+#include <QSettings>
+#include <QDir>
 #include <memory>
 
 #include "Models/AppSettings.h"
@@ -48,6 +51,8 @@ private slots:
     void onSaveButtonClicked();
     void onTestButtonClicked();
     void onHotkeyButtonClicked();
+    void onExitButtonClicked();
+    void onAutoStartCheckBoxToggled(bool checked);
     void onTrayIconActivated(QSystemTrayIcon::ActivationReason reason);
     void onShowMainWindow();
     void onExitApplication();
@@ -77,6 +82,8 @@ private:
     void showRecordingOverlay();
     void hideRecordingOverlay();
     QString getKeyText(QKeyEvent* event);
+    void setAutoStart(bool enabled);
+    bool isAutoStartEnabled();
     
     // UI组件
     QWidget* m_centralWidget;
@@ -105,6 +112,10 @@ private:
     QHBoxLayout* m_buttonLayout;
     QPushButton* m_saveButton;
     QPushButton* m_testButton;
+    QPushButton* m_exitButton;
+    
+    // 开机自启动设置
+    QCheckBox* m_autoStartCheckBox;
     
     // 状态和日志
     QLabel* m_statusLabel;

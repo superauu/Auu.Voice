@@ -28,6 +28,7 @@ AppSettings ConfigManager::loadSettings()
             settings.playSounds = obj["playSounds"].toBool(true);
             settings.recordingTimeoutSeconds = obj["recordingTimeoutSeconds"].toInt(30);
             settings.recordingMode = obj["recordingMode"].toString("HoldToRecord");
+            settings.autoStart = obj["autoStart"].toBool(false);
             
             file.close();
         }
@@ -58,6 +59,7 @@ void ConfigManager::saveSettings(const AppSettings& settings)
         obj["playSounds"] = settings.playSounds;
         obj["recordingTimeoutSeconds"] = settings.recordingTimeoutSeconds;
         obj["recordingMode"] = settings.recordingMode;
+        obj["autoStart"] = settings.autoStart;
         
         QJsonDocument doc(obj);
         

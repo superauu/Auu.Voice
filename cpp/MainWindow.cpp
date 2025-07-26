@@ -36,6 +36,11 @@ MainWindow::MainWindow(QWidget* parent)
     
     connect(m_chatGptService.get(), &ChatGptService::textProcessed, this, &MainWindow::onTextProcessed);
     connect(m_chatGptService.get(), &ChatGptService::processingFailed, this, &MainWindow::onProcessingFailed);
+    
+    // 启动时自动最小化到系统托盘
+    QTimer::singleShot(100, this, [this]() {
+        hide();
+    });
 }
 
 MainWindow::~MainWindow()
@@ -60,6 +65,7 @@ MainWindow::~MainWindow()
 void MainWindow::setupUI()
 {
     setWindowTitle("语音转文字助手");
+    setWindowIcon(QIcon(":/app.ico"));
     setMinimumSize(600, 500);
     resize(800, 600);
     
@@ -106,7 +112,7 @@ void MainWindow::setupUI()
     // Model
     m_modelLabel = new QLabel("GPT模型:", this);
     m_modelComboBox = new QComboBox(this);
-    m_modelComboBox->addItems({"gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"});
+    m_modelComboBox->addItems({"gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "gpt-4o"});
     m_settingsLayout->addWidget(m_modelLabel, 4, 0);
     m_settingsLayout->addWidget(m_modelComboBox, 4, 1, 1, 2);
     
@@ -130,15 +136,22 @@ void MainWindow::setupUI()
     m_settingsLayout->addWidget(m_recordingModeLabel, 6, 0);
     m_settingsLayout->addWidget(m_recordingModeComboBox, 6, 1, 1, 2);
     
+    // Auto Start
+    m_autoStartCheckBox = new QCheckBox("开机自动启动", this);
+    m_settingsLayout->addWidget(m_autoStartCheckBox, 7, 0, 1, 3);
+    
     m_mainLayout->addWidget(m_settingsGroup);
     
     // 控制按钮
     m_buttonLayout = new QHBoxLayout();
     m_saveButton = new QPushButton("保存设置", this);
     m_testButton = new QPushButton("测试录音", this);
+    m_exitButton = new QPushButton("退出程序", this);
+    m_exitButton->setStyleSheet("QPushButton { background-color: #ff6b6b; color: white; font-weight: bold; }");
     m_buttonLayout->addWidget(m_saveButton);
     m_buttonLayout->addWidget(m_testButton);
     m_buttonLayout->addStretch();
+    m_buttonLayout->addWidget(m_exitButton);
     m_mainLayout->addLayout(m_buttonLayout);
     
     // 状态标签
@@ -157,6 +170,8 @@ void MainWindow::setupUI()
     connect(m_saveButton, &QPushButton::clicked, this, &MainWindow::onSaveButtonClicked);
     connect(m_testButton, &QPushButton::clicked, this, &MainWindow::onTestButtonClicked);
     connect(m_hotkeyButton, &QPushButton::clicked, this, &MainWindow::onHotkeyButtonClicked);
+    connect(m_exitButton, &QPushButton::clicked, this, &MainWindow::onExitButtonClicked);
+    connect(m_autoStartCheckBox, &QCheckBox::toggled, this, &MainWindow::onAutoStartCheckBoxToggled);
     
     // 安装事件过滤器用于快捷键设置
     m_hotkeyLineEdit->installEventFilter(this);
@@ -170,7 +185,7 @@ void MainWindow::setupTrayIcon()
     }
     
     m_trayIcon = new QSystemTrayIcon(this);
-    m_trayIcon->setIcon(QIcon(":/icon.png")); // 需要添加图标资源
+    m_trayIcon->setIcon(QIcon(":/app.ico"));
     m_trayIcon->setToolTip("语音转文字助手");
     
     // 创建托盘菜单
@@ -203,6 +218,7 @@ void MainWindow::loadSettings()
     m_modelComboBox->setCurrentText(m_settings->modelName.isEmpty() ? "gpt-3.5-turbo" : m_settings->modelName);
     m_processingModeComboBox->setCurrentText(m_settings->defaultProcessingMode.isEmpty() ? "TranslateToEnglish" : m_settings->defaultProcessingMode);
     m_recordingModeComboBox->setCurrentIndex(m_settings->recordingMode == "ToggleRecord" ? 1 : 0);
+    m_autoStartCheckBox->setChecked(m_settings->autoStart);
     
     registerHotkey();
     initializeAPIs();
@@ -269,7 +285,6 @@ void MainWindow::closeEvent(QCloseEvent* event)
 {
     if (m_trayIcon && m_trayIcon->isVisible()) {
         hide();
-        m_trayIcon->showMessage("语音转文字助手", "程序已最小化到系统托盘", QSystemTrayIcon::Information, 2000);
         event->ignore();
     } else {
         event->accept();
@@ -351,6 +366,7 @@ void MainWindow::onSaveButtonClicked()
     m_settings->modelName = m_modelComboBox->currentText();
     m_settings->defaultProcessingMode = m_processingModeComboBox->currentText();
     m_settings->recordingMode = m_recordingModeComboBox->currentIndex() == 0 ? "HoldToRecord" : "ToggleRecord";
+    m_settings->autoStart = m_autoStartCheckBox->isChecked();
     
     ConfigManager::saveSettings(*m_settings);
     
@@ -514,4 +530,49 @@ void MainWindow::onProcessingFailed(const QString& error)
 {
     updateStatus(QString("处理失败: %1").arg(error), QColor("red"));
     addLog(QString("处理失败: %1").arg(error));
+}
+
+void MainWindow::onExitButtonClicked()
+{
+    if (QMessageBox::question(this, "确认退出", "确定要退出程序吗？", 
+                             QMessageBox::Yes | QMessageBox::No, 
+                             QMessageBox::No) == QMessageBox::Yes) {
+        onExitApplication();
+    }
+}
+
+void MainWindow::onAutoStartCheckBoxToggled(bool checked)
+{
+    setAutoStart(checked);
+    if (checked) {
+        addLog("已启用开机自动启动");
+    } else {
+        addLog("已禁用开机自动启动");
+    }
+}
+
+void MainWindow::setAutoStart(bool enabled)
+{
+#ifdef Q_OS_WIN
+    QSettings settings("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", QSettings::NativeFormat);
+    QString appName = "Speech2TextAssistant";
+    
+    if (enabled) {
+        QString appPath = QApplication::applicationFilePath();
+        appPath = QDir::toNativeSeparators(appPath);
+        settings.setValue(appName, QString("\"%1\"").arg(appPath));
+    } else {
+        settings.remove(appName);
+    }
+#endif
+}
+
+bool MainWindow::isAutoStartEnabled()
+{
+#ifdef Q_OS_WIN
+    QSettings settings("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", QSettings::NativeFormat);
+    return settings.contains("Speech2TextAssistant");
+#else
+    return false;
+#endif
 }

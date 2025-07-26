@@ -65,10 +65,26 @@ echo ========================================
 echo Build successful!
 echo ========================================
 echo.
-echo Executable location: build\Release\Speech2TextAssistant.exe
+
+echo Deploying Qt dependencies...
+cd build
+"%QT_DIR%\bin\windeployqt.exe" bin\Speech2TextAssistant.exe
+if %errorlevel% neq 0 (
+    echo [WARNING] Qt deployment failed, but build was successful
+    echo You may need to manually copy Qt DLLs
+) else (
+    echo [OK] Qt dependencies deployed successfully
+)
+
+echo.
+echo ========================================
+echo Build and deployment complete!
+echo ========================================
+echo.
+echo Executable location: build\bin\Speech2TextAssistant.exe
 echo.
 echo To run the program:
-echo cd build\Release
+echo cd build\bin
 echo Speech2TextAssistant.exe
 echo.
 pause

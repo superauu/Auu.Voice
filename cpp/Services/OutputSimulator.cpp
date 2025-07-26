@@ -127,7 +127,7 @@ QString OutputSimulator::escapeSpecialCharacters(const QString& text)
 
 void OutputSimulator::setClipboardWithRetry(const QString& text)
 {
-    const int maxRetries = 3;
+    const int maxRetries = 5;
     QString originalClipboard;
     
     QClipboard* clipboard = QApplication::clipboard();
@@ -138,49 +138,79 @@ void OutputSimulator::setClipboardWithRetry(const QString& text)
     for (int i = 0; i < maxRetries; i++) {
         try {
             // 备份当前剪贴板内容
-            if (clipboard->mimeData()->hasText()) {
+            if (clipboard->mimeData() && clipboard->mimeData()->hasText()) {
                 originalClipboard = clipboard->text();
             }
             
-            // 清空剪贴板
-            clipboard->clear();
-            QThread::msleep(10);
-            
             // 将文本放入剪贴板
-            clipboard->setText(text);
-            QThread::msleep(50);
+            clipboard->setText(text, QClipboard::Clipboard);
+            
+            // 等待剪贴板操作完成
+            QThread::msleep(100);
             
             // 验证剪贴板内容
-            if (clipboard->text() == text) {
+            QString clipboardText = clipboard->text(QClipboard::Clipboard);
+            if (clipboardText == text) {
 #ifdef Q_OS_WIN
-                // 获取当前活动窗口并确保获得焦点
+                // 获取当前活动窗口
                 HWND activeWindow = GetForegroundWindow();
-                if (activeWindow) {
-                    SetForegroundWindow(activeWindow);
-                    QThread::msleep(50);
+                if (!activeWindow) {
+                    // 如果没有活动窗口，尝试获取桌面窗口
+                    activeWindow = GetDesktopWindow();
                 }
                 
-                // 发送Ctrl+V粘贴
-                keybd_event(VK_CONTROL, 0, 0, 0);
-                keybd_event('V', 0, 0, 0);
-                keybd_event('V', 0, KEYEVENTF_KEYUP, 0);
-                keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0);
+                if (activeWindow) {
+                    // 确保窗口获得焦点
+                    SetForegroundWindow(activeWindow);
+                    SetFocus(activeWindow);
+                    QThread::msleep(100);
+                    
+                    // 使用更可靠的方式发送Ctrl+V
+                    INPUT inputs[4] = {};
+                    
+                    // 按下Ctrl
+                    inputs[0].type = INPUT_KEYBOARD;
+                    inputs[0].ki.wVk = VK_CONTROL;
+                    inputs[0].ki.dwFlags = 0;
+                    
+                    // 按下V
+                    inputs[1].type = INPUT_KEYBOARD;
+                    inputs[1].ki.wVk = 'V';
+                    inputs[1].ki.dwFlags = 0;
+                    
+                    // 释放V
+                    inputs[2].type = INPUT_KEYBOARD;
+                    inputs[2].ki.wVk = 'V';
+                    inputs[2].ki.dwFlags = KEYEVENTF_KEYUP;
+                    
+                    // 释放Ctrl
+                    inputs[3].type = INPUT_KEYBOARD;
+                    inputs[3].ki.wVk = VK_CONTROL;
+                    inputs[3].ki.dwFlags = KEYEVENTF_KEYUP;
+                    
+                    SendInput(4, inputs, sizeof(INPUT));
+                }
 #endif
-                QThread::msleep(100);
+                
+                // 等待粘贴操作完成
+                QThread::msleep(200);
                 
                 // 延迟后恢复原剪贴板内容
-                QThread::msleep(400);
-                if (!originalClipboard.isEmpty()) {
-                    clipboard->setText(originalClipboard);
-                }
+                QTimer::singleShot(1000, [clipboard, originalClipboard]() {
+                    if (!originalClipboard.isEmpty()) {
+                        clipboard->setText(originalClipboard, QClipboard::Clipboard);
+                    }
+                });
+                
                 return; // 成功，退出重试循环
             }
         } catch (...) {
             // 剪贴板被其他进程占用，等待后重试
-            QThread::msleep(100);
-            if (i == maxRetries - 1) {
-                throw std::runtime_error("无法访问剪贴板，请稍后重试");
-            }
+            QThread::msleep(200);
+        }
+        
+        if (i < maxRetries - 1) {
+            QThread::msleep(100 * (i + 1)); // 递增延迟
         }
     }
     

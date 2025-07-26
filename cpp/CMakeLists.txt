@@ -23,7 +23,13 @@ set(SOURCES
     Services/HotkeyService.cpp
     Services/OutputSimulator.cpp
     UI/RecordingOverlay.cpp
+    resources.qrc
 )
+
+# Windows resource file
+if(WIN32)
+    set(SOURCES ${SOURCES} app.rc)
+endif()
 
 # Header files
 set(HEADERS
@@ -38,8 +44,8 @@ set(HEADERS
     UI/RecordingOverlay.h
 )
 
-# Create executable
-add_executable(Speech2TextAssistant ${SOURCES} ${HEADERS})
+# Create executable (WIN32 hides console window)
+add_executable(Speech2TextAssistant WIN32 ${SOURCES} ${HEADERS})
 
 # Link Qt libraries
 target_link_libraries(Speech2TextAssistant
