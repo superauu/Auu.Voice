@@ -266,14 +266,19 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 
-                <Label Grid.Row="0" Grid.Column="0" Content="快捷键:" VerticalAlignment="Center" Margin="0,0,15,8" FontWeight="Medium" Foreground="#495057"/>
+                <Label Grid.Row="0" Grid.Column="0" Content="语音录音快捷键:" VerticalAlignment="Center" Margin="0,0,15,8" FontWeight="Medium" Foreground="#495057"/>
                 <TextBox x:Name="HotkeyTextBox" Grid.Row="0" Grid.Column="1" Margin="0,0,0,8" Height="32" Style="{StaticResource ModernTextBoxStyle}"
                          KeyDown="HotkeyTextBox_KeyDown" GotFocus="HotkeyTextBox_GotFocus" LostFocus="HotkeyTextBox_LostFocus"/>
                 
-                <Label Grid.Row="1" Grid.Column="0" Content="处理模式:" VerticalAlignment="Center" Margin="0,0,15,8" FontWeight="Medium" Foreground="#495057"/>
-                <Grid Grid.Row="1" Grid.Column="1" Margin="0,0,0,8">
+                <Label Grid.Row="1" Grid.Column="0" Content="文本输入快捷键:" VerticalAlignment="Center" Margin="0,0,15,8" FontWeight="Medium" Foreground="#495057"/>
+                <TextBox x:Name="TextInputHotkeyTextBox" Grid.Row="1" Grid.Column="1" Margin="0,0,0,8" Height="32" Style="{StaticResource ModernTextBoxStyle}"
+                         KeyDown="TextInputHotkeyTextBox_KeyDown" GotFocus="TextInputHotkeyTextBox_GotFocus" LostFocus="TextInputHotkeyTextBox_LostFocus"/>
+                
+                <Label Grid.Row="2" Grid.Column="0" Content="处理模式:" VerticalAlignment="Center" Margin="0,0,15,8" FontWeight="Medium" Foreground="#495057"/>
+                <Grid Grid.Row="2" Grid.Column="1" Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
@@ -282,22 +287,22 @@
                     <Button x:Name="ManageModesButton" Grid.Column="1" Content="管理" Width="60" Height="36" Style="{StaticResource SecondaryButtonStyle}" Click="ManageModesButton_Click"/>
                 </Grid>
                 
-                <Label Grid.Row="2" Grid.Column="0" Content="录音模式:" VerticalAlignment="Center" Margin="0,0,15,8" FontWeight="Medium" Foreground="#495057"/>
-                <ComboBox x:Name="RecordingModeComboBox" Grid.Row="2" Grid.Column="1" Margin="0,0,0,8" Height="32" Style="{StaticResource ModernComboBoxStyle}">
+                <Label Grid.Row="3" Grid.Column="0" Content="录音模式:" VerticalAlignment="Center" Margin="0,0,15,8" FontWeight="Medium" Foreground="#495057"/>
+                <ComboBox x:Name="RecordingModeComboBox" Grid.Row="3" Grid.Column="1" Margin="0,0,0,8" Height="32" Style="{StaticResource ModernComboBoxStyle}">
                     <ComboBoxItem Content="按住录音 (Hold to Record)"/>
                     <ComboBoxItem Content="切换录音 (Toggle Record)"/>
                 </ComboBox>
                 
-                <Label Grid.Row="3" Grid.Column="0" Content="系统设置:" VerticalAlignment="Center" Margin="0,0,15,8" FontWeight="Medium" Foreground="#495057"/>
-                <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
+                <Label Grid.Row="4" Grid.Column="0" Content="系统设置:" VerticalAlignment="Center" Margin="0,0,15,8" FontWeight="Medium" Foreground="#495057"/>
+                <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
                     <CheckBox x:Name="StartupCheckBox" Content="开机自动启动" Margin="0,0,20,0" FontSize="13" Foreground="#495057"
                               Checked="StartupCheckBox_Checked" Unchecked="StartupCheckBox_Unchecked"/>
                     <CheckBox x:Name="MinimizeToTrayCheckBox" Content="启动时最小化到托盘" FontSize="13" Foreground="#495057"
                               Checked="MinimizeToTrayCheckBox_Checked" Unchecked="MinimizeToTrayCheckBox_Unchecked"/>
                 </StackPanel>
                 
-                <Label Grid.Row="4" Grid.Column="0" Content="测试:" VerticalAlignment="Center" Margin="0,0,15,0" FontWeight="Medium" Foreground="#495057"/>
-                <Button x:Name="TestButton" Grid.Row="4" Grid.Column="1" Content="🎤 测试录音" Width="120" Height="32" 
+                <Label Grid.Row="5" Grid.Column="0" Content="测试:" VerticalAlignment="Center" Margin="0,0,15,0" FontWeight="Medium" Foreground="#495057"/>
+                <Button x:Name="TestButton" Grid.Row="5" Grid.Column="1" Content="🎤 测试录音" Width="120" Height="32" 
                         HorizontalAlignment="Left" Style="{StaticResource ModernButtonStyle}" Click="TestButton_Click"/>
             </Grid>
         </GroupBox>

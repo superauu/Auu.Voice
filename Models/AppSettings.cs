@@ -3,6 +3,7 @@ namespace Speech2TextAssistant.Models;
 public class AppSettings
 {
     public string HotKey { get; set; } = "Ctrl+Alt+M";
+    public string TextInputHotKey { get; set; } = "Ctrl+Alt+T";
     public string OpenAIApiKey { get; set; } = "";
     public string DefaultProcessingMode { get; set; } = "TranslateToEnglishEmail";
     public string ModelName { get; set; } = "gpt-3.5-turbo";

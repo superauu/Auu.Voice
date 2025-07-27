@@ -25,12 +25,61 @@ public class OutputSimulator
     [DllImport("user32.dll")]
     private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 
+    [DllImport("user32.dll")]
+    private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
     private const int KEYEVENTF_KEYDOWN = 0x0000;
     private const int KEYEVENTF_KEYUP = 0x0002;
+    private const int KEYEVENTF_UNICODE = 0x0004;
     private const int VK_CONTROL = 0x11;
     private const int VK_V = 0x56;
     private const int VK_RETURN = 0x0D;
     private const int VK_TAB = 0x09;
+    private const int INPUT_KEYBOARD = 1;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct INPUT
+    {
+        public int type;
+        public InputUnion u;
+    }
+
+    [StructLayout(LayoutKind.Explicit)]
+    private struct InputUnion
+    {
+        [FieldOffset(0)] public MOUSEINPUT mi;
+        [FieldOffset(0)] public KEYBDINPUT ki;
+        [FieldOffset(0)] public HARDWAREINPUT hi;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct KEYBDINPUT
+    {
+        public ushort wVk;
+        public ushort wScan;
+        public uint dwFlags;
+        public uint time;
+        public IntPtr dwExtraInfo;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MOUSEINPUT
+    {
+        public int dx;
+        public int dy;
+        public uint mouseData;
+        public uint dwFlags;
+        public uint time;
+        public IntPtr dwExtraInfo;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct HARDWAREINPUT
+    {
+        public uint uMsg;
+        public ushort wParamL;
+        public ushort wParamH;
+    }
 
     public static async Task SendTextToActiveWindowAsync(string text)
     {
@@ -160,7 +209,7 @@ public class OutputSimulator
     }
 
     /// <summary>
-    ///     更强大的文本输入方法，使用 Windows API 直接发送字符
+    ///     更强大的文本输入方法，使用 Unicode 输入绕过输入法影响
     /// </summary>
     public static void SendTextDirect(string text)
     {
@@ -173,7 +222,7 @@ public class OutputSimulator
             SetForegroundWindow(activeWindow);
             Thread.Sleep(100);
 
-            // 逐字符发送，避免特殊字符问题
+            // 逐字符发送，使用Unicode方式避免输入法影响
             foreach (var c in text)
             {
                 if (char.IsControl(c))
@@ -186,12 +235,12 @@ public class OutputSimulator
                 }
                 else
                 {
-                    // 发送普通字符
-                    SendChar(c);
+                    // 使用Unicode方式发送普通字符
+                    SendCharUnicode(c);
                 }
 
                 // 小延迟确保字符正确发送
-                Thread.Sleep(1);
+                Thread.Sleep(2);
             }
         }
         catch (Exception ex)
@@ -218,30 +267,115 @@ public class OutputSimulator
         keybd_event((byte)vkCode, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
     }
 
-    private static void SendChar(char c)
+    private static void SendCharUnicode(char c)
     {
-        // 使用Unicode输入方法
-        var vkCode = VkKeyScan(c);
-        if (vkCode != -1)
+        // 使用Unicode输入方法，绕过输入法影响
+        var inputs = new INPUT[2];
+        
+        // Key down
+        inputs[0] = new INPUT
         {
-            var key = (byte)(vkCode & 0xFF);
-            var shift = (vkCode & 0x100) != 0;
-            
-            if (shift)
+            type = INPUT_KEYBOARD,
+            u = new InputUnion
             {
-                keybd_event(0x10, 0, KEYEVENTF_KEYDOWN, UIntPtr.Zero); // Shift down
+                ki = new KEYBDINPUT
+                {
+                    wVk = 0,
+                    wScan = c,
+                    dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYDOWN,
+                    time = 0,
+                    dwExtraInfo = IntPtr.Zero
+                }
             }
-            
-            keybd_event(key, 0, KEYEVENTF_KEYDOWN, UIntPtr.Zero);
-            keybd_event(key, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-            
-            if (shift)
+        };
+        
+        // Key up
+        inputs[1] = new INPUT
+        {
+            type = INPUT_KEYBOARD,
+            u = new InputUnion
             {
-                keybd_event(0x10, 0, KEYEVENTF_KEYUP, UIntPtr.Zero); // Shift up
+                ki = new KEYBDINPUT
+                {
+                    wVk = 0,
+                    wScan = c,
+                    dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP,
+                    time = 0,
+                    dwExtraInfo = IntPtr.Zero
+                }
             }
-        }
+        };
+        
+        SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
     }
 
     [DllImport("user32.dll")]
     private static extern short VkKeyScan(char ch);
+
+    // 输入法相关API
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetKeyboardLayout(uint idThread);
+
+    [DllImport("user32.dll")]
+    private static extern bool ActivateKeyboardLayout(IntPtr hkl, uint flags);
+
+    [DllImport("user32.dll")]
+    private static extern int GetKeyboardLayoutList(int nBuff, IntPtr[] lpList);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr processId);
+
+    private const uint KLF_ACTIVATE = 0x00000001;
+    private const int LOCALE_SENGLANGUAGE = 0x1001;
+
+    /// <summary>
+    /// 获取当前输入法布局
+    /// </summary>
+    private static IntPtr GetCurrentInputMethod()
+    {
+        var foregroundWindow = GetForegroundWindow();
+        var threadId = GetWindowThreadProcessId(foregroundWindow, IntPtr.Zero);
+        return GetKeyboardLayout(threadId);
+    }
+
+    /// <summary>
+    /// 切换到英文输入法
+    /// </summary>
+    private static IntPtr SwitchToEnglishInputMethod()
+    {
+        var currentLayout = GetCurrentInputMethod();
+        
+        // 获取所有可用的键盘布局
+        var layoutCount = GetKeyboardLayoutList(0, Array.Empty<IntPtr>());
+        if (layoutCount > 0)
+        {
+            var layouts = new IntPtr[layoutCount];
+            GetKeyboardLayoutList(layoutCount, layouts);
+            
+            // 查找英文布局 (通常是0x04090409 for US English)
+            foreach (var layout in layouts)
+            {
+                var layoutId = layout.ToInt64() & 0xFFFF;
+                // 英文布局的语言ID通常是0x0409 (US English) 或 0x0809 (UK English)
+                if (layoutId == 0x0409 || layoutId == 0x0809)
+                {
+                    ActivateKeyboardLayout(layout, KLF_ACTIVATE);
+                    return currentLayout; // 返回原来的布局以便恢复
+                }
+            }
+        }
+        
+        return currentLayout;
+    }
+
+    /// <summary>
+    /// 恢复输入法布局
+    /// </summary>
+    private static void RestoreInputMethod(IntPtr originalLayout)
+    {
+        if (originalLayout != IntPtr.Zero)
+        {
+            ActivateKeyboardLayout(originalLayout, KLF_ACTIVATE);
+        }
+    }
 }

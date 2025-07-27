@@ -63,7 +63,8 @@ namespace Speech2TextAssistant
                 _hotkeyService?.UnregisterHotkey();
                 var windowInteropHelper = new System.Windows.Interop.WindowInteropHelper(this);
                 _hotkeyService?.RegisterHotkey(windowInteropHelper.Handle, _settings.HotKey);
-                UpdateStatus("监听已启动，按快捷键开始录音", Colors.Green);
+                _hotkeyService?.RegisterTextInputHotkey(windowInteropHelper.Handle, _settings.TextInputHotKey ?? "Ctrl+Alt+T");
+                UpdateStatus("监听已启动，按快捷键开始录音或文本输入", Colors.Green);
                 AddLog("快捷键监听已自动启动");
             }
             
@@ -88,6 +89,7 @@ namespace Speech2TextAssistant
             _hotkeyService = new HotkeyService();
             _hotkeyService.HotkeyPressed += OnHotkeyPressed;
             _hotkeyService.HotkeyReleased += OnHotkeyReleased;
+            _hotkeyService.TextInputHotkeyPressed += OnTextInputHotkeyPressed;
 
             _speechService = new SpeechRecognizerService();
             _speechService.RecognitionStarted += OnRecognitionStarted;
@@ -123,6 +125,7 @@ namespace Speech2TextAssistant
                 
                 // 设置快捷键
                 HotkeyTextBox.Text = _settings.HotKey ?? "Ctrl+Alt+M";
+                TextInputHotkeyTextBox.Text = _settings.TextInputHotKey ?? "Ctrl+Alt+T";
                 
                 // 加载处理模式
                 LoadProcessingModes();
@@ -222,6 +225,8 @@ namespace Speech2TextAssistant
         private void HotkeyTextBox_GotFocus(object sender, RoutedEventArgs e)
         {
             HotkeyTextBox.Text = "按下要设置的快捷键...";
+            // 暂停快捷键监听，避免在设置快捷键时触发
+            _hotkeyService?.PauseListening();
         }
         
         private void HotkeyTextBox_LostFocus(object sender, RoutedEventArgs e)
@@ -230,6 +235,36 @@ namespace Speech2TextAssistant
             {
                 HotkeyTextBox.Text = _settings?.HotKey ?? "Ctrl+Alt+M";
             }
+            // 恢复快捷键监听
+            _hotkeyService?.ResumeListening();
+        }
+        
+        // 文本输入快捷键文本框事件
+        private void TextInputHotkeyTextBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            var keyText = GetKeyText(e.Key, Keyboard.Modifiers);
+            if (!string.IsNullOrEmpty(keyText))
+            {
+                TextInputHotkeyTextBox.Text = keyText;
+                e.Handled = true;
+            }
+        }
+        
+        private void TextInputHotkeyTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            TextInputHotkeyTextBox.Text = "按下要设置的快捷键...";
+            // 暂停快捷键监听，避免在设置快捷键时触发
+            _hotkeyService?.PauseListening();
+        }
+        
+        private void TextInputHotkeyTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (TextInputHotkeyTextBox.Text == "按下要设置的快捷键...")
+            {
+                TextInputHotkeyTextBox.Text = _settings?.TextInputHotKey ?? "Ctrl+Alt+T";
+            }
+            // 恢复快捷键监听
+            _hotkeyService?.ResumeListening();
         }
 
         private string GetKeyText(Key key, ModifierKeys modifiers)
@@ -245,7 +280,17 @@ namespace Speech2TextAssistant
             if (modifiers.HasFlag(ModifierKeys.Windows))
                 result.Append("Win+");
                 
-            result.Append(key.ToString());
+            // 处理数字键，将D1-D9转换为1-9
+            var keyString = key.ToString();
+            if (keyString.StartsWith("D") && keyString.Length == 2 && char.IsDigit(keyString[1]))
+            {
+                result.Append(keyString[1]); // 只取数字部分
+            }
+            else
+            {
+                result.Append(keyString);
+            }
+            
             return result.ToString();
         }
 
@@ -349,6 +394,7 @@ namespace Speech2TextAssistant
                 _settings.AzureSpeechKey = SpeechKeyPasswordBox.Password;
                 _settings.AzureSpeechRegion = SpeechRegionTextBox.Text;
                 _settings.HotKey = HotkeyTextBox.Text;
+                _settings.TextInputHotKey = TextInputHotkeyTextBox.Text;
                 _settings.DefaultProcessingMode = ((ComboBoxItem)ProcessingModeComboBox.SelectedItem)?.Tag?.ToString() ?? "TranslateToEnglishEmail";
                 
                 var recordingModeText = ((ComboBoxItem)RecordingModeComboBox.SelectedItem)?.Content?.ToString();
@@ -363,6 +409,7 @@ namespace Speech2TextAssistant
                 _hotkeyService?.UnregisterHotkey();
                 var windowInteropHelper = new System.Windows.Interop.WindowInteropHelper(this);
                 _hotkeyService?.RegisterHotkey(windowInteropHelper.Handle, _settings.HotKey);
+                _hotkeyService?.RegisterTextInputHotkey(windowInteropHelper.Handle, _settings.TextInputHotKey);
                 
                 UpdateStatus("设置已保存", Colors.Green);
                 AddLog("设置已保存到配置文件");
@@ -498,6 +545,87 @@ namespace Speech2TextAssistant
                 UpdateStatus($"停止录音失败: {ex.Message}", Colors.Red);
                 AddLog($"快捷键停止录音错误: {ex.Message}");
                 HideRecordingOverlay();
+            }
+        }
+        
+        // 文本输入快捷键事件处理
+        private void OnTextInputHotkeyPressed(object? sender, EventArgs e)
+        {
+            try
+            {
+                this.Dispatcher.Invoke(() =>
+                {
+                    var textInputWindow = new TextInputWindow();
+                    var result = textInputWindow.ShowDialog();
+                    
+                    if (result == true && !string.IsNullOrWhiteSpace(textInputWindow.InputText))
+                    {
+                        // 异步处理文本输入
+                        _ = Task.Run(async () => await ProcessTextInputAsync(textInputWindow.InputText));
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"打开文本输入窗口失败: {ex.Message}", Colors.Red);
+                AddLog($"文本输入快捷键错误: {ex.Message}");
+            }
+        }
+        
+        private async Task ProcessTextInputAsync(string inputText)
+        {
+            try
+            {
+                this.Dispatcher.Invoke(() => UpdateStatus("正在处理文本...", Colors.Blue));
+                
+                if (_settings == null)
+                {
+                    this.Dispatcher.Invoke(() => UpdateStatus("设置未加载", Colors.Red));
+                    return;
+                }
+                
+                if (string.IsNullOrEmpty(_settings.OpenAIApiKey))
+                {
+                    this.Dispatcher.Invoke(() => UpdateStatus("请先设置OpenAI API Key", Colors.Red));
+                    return;
+                }
+                
+                // 获取当前选择的处理模式
+                var processingMode = _settings.DefaultProcessingMode ?? "TranslateToEnglishEmail";
+                var mode = _settings.GetProcessingMode(processingMode);
+                
+                if (mode == null)
+                {
+                    mode = _settings.GetDefaultProcessingModeObject();
+                }
+                
+                // 使用ChatGPT处理文本
+                _chatGptService?.Initialize(_settings.OpenAIApiKey, _settings.ModelName ?? "gpt-3.5-turbo");
+                var processedText = await (_chatGptService?.ProcessTextAsync(inputText, mode) ?? Task.FromResult(inputText));
+                
+                if (!string.IsNullOrEmpty(processedText))
+                {
+                    // 发送处理后的文本到光标位置
+                    await OutputSimulator.SendTextToActiveWindowAsync(processedText);
+                    
+                    this.Dispatcher.Invoke(() =>
+                    {
+                        UpdateStatus("文本处理完成", Colors.Green);
+                        AddLog($"文本输入处理完成: {inputText} -> {processedText}");
+                    });
+                }
+                else
+                {
+                    this.Dispatcher.Invoke(() => UpdateStatus("文本处理失败", Colors.Red));
+                }
+            }
+            catch (Exception ex)
+            {
+                this.Dispatcher.Invoke(() =>
+                {
+                    UpdateStatus($"文本处理失败: {ex.Message}", Colors.Red);
+                    AddLog($"文本处理错误: {ex.Message}");
+                });
             }
         }
 

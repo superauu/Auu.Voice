@@ -60,6 +60,7 @@ public class ConfigManager
             var settingsToSave = new AppSettings
             {
                 HotKey = settings.HotKey,
+                TextInputHotKey = settings.TextInputHotKey,
                 OpenAIApiKey = string.IsNullOrEmpty(settings.OpenAIApiKey) ? "" : EncryptString(settings.OpenAIApiKey),
                 DefaultProcessingMode = settings.DefaultProcessingMode,
                 ModelName = settings.ModelName,
@@ -72,9 +73,11 @@ public class ConfigManager
                 RecordingMode = settings.RecordingMode,
                 StartWithWindows = settings.StartWithWindows,
                 MinimizeToTray = settings.MinimizeToTray,
-                ShowTrayNotifications = settings.ShowTrayNotifications
+                ShowTrayNotifications = settings.ShowTrayNotifications,
+                ProcessingModes = settings.ProcessingModes,
+                CustomPrompt = settings.CustomPrompt
             };
-
+            
             var json = JsonSerializer.Serialize(settingsToSave, JsonOptions);
             File.WriteAllText(ConfigPath, json);
         }
