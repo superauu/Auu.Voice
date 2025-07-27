@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Linq;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -62,6 +63,8 @@ namespace Speech2TextAssistant
                 _hotkeyService?.UnregisterHotkey();
                 var windowInteropHelper = new System.Windows.Interop.WindowInteropHelper(this);
                 _hotkeyService?.RegisterHotkey(windowInteropHelper.Handle, _settings.HotKey);
+                UpdateStatus("监听已启动，按快捷键开始录音", Colors.Green);
+                AddLog("快捷键监听已自动启动");
             }
             
             // 检查是否需要启动时最小化到托盘
@@ -121,15 +124,8 @@ namespace Speech2TextAssistant
                 // 设置快捷键
                 HotkeyTextBox.Text = _settings.HotKey ?? "Ctrl+Alt+M";
                 
-                // 设置处理模式
-                for (int i = 0; i < ProcessingModeComboBox.Items.Count; i++)
-                {
-                    if (((ComboBoxItem)ProcessingModeComboBox.Items[i]).Content.ToString() == _settings.DefaultProcessingMode)
-                    {
-                        ProcessingModeComboBox.SelectedIndex = i;
-                        break;
-                    }
-                }
+                // 加载处理模式
+                LoadProcessingModes();
                 
                 // 设置录音模式
                 var recordingModeText = _settings.RecordingMode == "HoldToRecord" ? "按住录音 (Hold to Record)" : "切换录音 (Toggle Record)";
@@ -353,7 +349,7 @@ namespace Speech2TextAssistant
                 _settings.AzureSpeechKey = SpeechKeyPasswordBox.Password;
                 _settings.AzureSpeechRegion = SpeechRegionTextBox.Text;
                 _settings.HotKey = HotkeyTextBox.Text;
-                _settings.DefaultProcessingMode = ((ComboBoxItem)ProcessingModeComboBox.SelectedItem)?.Content?.ToString() ?? "TranslateToEnglishEmail";
+                _settings.DefaultProcessingMode = ((ComboBoxItem)ProcessingModeComboBox.SelectedItem)?.Tag?.ToString() ?? "TranslateToEnglishEmail";
                 
                 var recordingModeText = ((ComboBoxItem)RecordingModeComboBox.SelectedItem)?.Content?.ToString();
                 _settings.RecordingMode = recordingModeText?.Contains("Hold") == true ? "HoldToRecord" : "ToggleRecord";
@@ -540,6 +536,65 @@ namespace Speech2TextAssistant
             });
         }
 
+        // 处理模式管理
+        private void LoadProcessingModes()
+        {
+            ProcessingModeComboBox.Items.Clear();
+            
+            foreach (var mode in _settings.ProcessingModes)
+            {
+                ProcessingModeComboBox.Items.Add(new ComboBoxItem
+                {
+                    Content = mode.DisplayName,
+                    Tag = mode.Name
+                });
+            }
+            
+            // 设置默认选中项
+            for (int i = 0; i < ProcessingModeComboBox.Items.Count; i++)
+            {
+                var item = (ComboBoxItem)ProcessingModeComboBox.Items[i];
+                if (item.Tag.ToString() == _settings.DefaultProcessingMode)
+                {
+                    ProcessingModeComboBox.SelectedIndex = i;
+                    break;
+                }
+            }
+        }
+        
+        private void ManageModesButton_Click(object sender, RoutedEventArgs e)
+        {
+            var managerWindow = new ProcessingModeManagerWindow(_settings.ProcessingModes);
+            managerWindow.SetDefaultMode(_settings.DefaultProcessingMode);
+            
+            if (managerWindow.ShowDialog() == true)
+            {
+                // 更新设置中的处理模式列表
+                _settings.ProcessingModes = managerWindow.GetProcessingModes();
+                
+                // 更新默认模式
+                var defaultModeName = managerWindow.GetDefaultModeName();
+                if (!string.IsNullOrEmpty(defaultModeName))
+                {
+                    _settings.DefaultProcessingMode = defaultModeName;
+                }
+                
+                // 重新加载处理模式
+                LoadProcessingModes();
+                
+                // 保存设置
+                SaveSettings();
+            }
+        }
+        
+        private void ProcessingModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_settings != null && ProcessingModeComboBox.SelectedItem is ComboBoxItem selectedItem)
+            {
+                _settings.DefaultProcessingMode = selectedItem.Tag?.ToString() ?? "TranslateToEnglishEmail";
+            }
+        }
+
         // 语音识别事件处理
         private void OnRecognitionStarted(object? sender, EventArgs e)
         {
@@ -572,18 +627,14 @@ namespace Speech2TextAssistant
                     {
                         _chatGptService.Initialize(_settings.OpenAIApiKey, _settings.ModelName ?? "gpt-3.5-turbo");
                         
-                        // 将字符串转换为枚举
-                        var promptType = _settings.DefaultProcessingMode switch
+                        // 获取当前选中的处理模式
+                        var selectedMode = _settings.GetProcessingMode(_settings.DefaultProcessingMode);
+                        if (selectedMode == null)
                         {
-                            "TranslateToEnglish" => ChatGptPromptType.TranslateToEnglish,
-                            "TranslateToEnglishEmail" => ChatGptPromptType.TranslateToEnglishEmail,
-                            "FormatAsEmail" => ChatGptPromptType.FormatAsEmail,
-                            "Summarize" => ChatGptPromptType.Summarize,
-                            "CustomPrompt" => ChatGptPromptType.CustomPrompt,
-                            _ => ChatGptPromptType.TranslateToEnglishEmail
-                        };
+                            selectedMode = _settings.GetDefaultProcessingModeObject();
+                        }
                         
-                        var processedText = await _chatGptService.ProcessTextAsync(recognizedText, promptType);
+                        var processedText = await _chatGptService.ProcessTextAsync(recognizedText, selectedMode);
                         
                         if (!string.IsNullOrEmpty(processedText))
                         {
@@ -639,7 +690,7 @@ namespace Speech2TextAssistant
         {
             this.Dispatcher.Invoke(() =>
             {
-                StatusLabel.Content = $"状态: {message}";
+                StatusLabel.Text = $"状态: {message}";
                 StatusLabel.Foreground = new SolidColorBrush(color);
             });
         }
@@ -649,21 +700,22 @@ namespace Speech2TextAssistant
             this.Dispatcher.Invoke(() =>
             {
                 var timestamp = DateTime.Now.ToString("HH:mm:ss");
-                LogListBox.Items.Add($"[{timestamp}] {message}");
+                var logEntry = $"[{timestamp}] {message}\n";
                 
-                // 自动滚动到最新日志
-                if (LogListBox.Items.Count > 0)
-                {
-                    LogListBox.ScrollIntoView(LogListBox.Items[LogListBox.Items.Count - 1]);
-                }
+                // 添加到日志文本块
+                LogTextBlock.Text += logEntry;
                 
-                // 限制日志数量
-                while (LogListBox.Items.Count > 1000)
+                // 限制日志长度（保留最后1000行）
+                var lines = LogTextBlock.Text.Split('\n');
+                if (lines.Length > 1000)
                 {
-                    LogListBox.Items.RemoveAt(0);
+                    var recentLines = lines.Skip(lines.Length - 1000).ToArray();
+                    LogTextBlock.Text = string.Join("\n", recentLines);
                 }
             });
         }
+
+        // 快捷键监听现在始终启用，无需手动控制
 
         protected override void OnClosing(CancelEventArgs e)
         {

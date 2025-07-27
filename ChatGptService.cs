@@ -31,13 +31,13 @@ public class ChatGptService
             new AuthenticationHeaderValue("Bearer", apiKey);
     }
 
-    public async Task<string> ProcessTextAsync(string text, ChatGptPromptType promptType, string customPrompt = "")
+    public async Task<string> ProcessTextAsync(string text, ProcessingMode processingMode, string customPrompt = "")
     {
         try
         {
-            var systemPrompt = promptType == ChatGptPromptType.CustomPrompt && !string.IsNullOrEmpty(customPrompt)
+            var systemPrompt = processingMode.Name == "CustomPrompt" && !string.IsNullOrEmpty(customPrompt)
                 ? customPrompt
-                : PromptTemplates.GetSystemPrompt(promptType);
+                : processingMode.SystemPrompt;
 
             var requestBody = new
             {
