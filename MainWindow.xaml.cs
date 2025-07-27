@@ -1,0 +1,679 @@
+using System.ComponentModel;
+using System.Text;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using Microsoft.Win32;
+using Speech2TextAssistant.Models;
+using Application = System.Windows.Application;
+using MessageBox = System.Windows.MessageBox;
+using Hardcodet.Wpf.TaskbarNotification;
+using DrawingColor = System.Drawing.Color;
+using MediaColor = System.Windows.Media.Color;
+
+namespace Speech2TextAssistant
+{
+    public partial class MainWindow : Window
+    {
+        // Services
+        private ChatGptService _chatGptService = null!;
+        private HotkeyService _hotkeyService = null!;
+        private bool _isToggleRecording = false;
+        private RecordingOverlayWpf? _recordingOverlay;
+        private AppSettings? _settings;
+        private SpeechRecognizerService _speechService = null!;
+        private TaskbarIcon? _notifyIcon;
+
+        public MainWindow()
+        {
+            try
+            {
+                InitializeComponent();
+                AddLog("InitializeComponent 完成");
+                
+                InitializeServices();
+                AddLog("InitializeServices 完成");
+                
+                LoadSettings();
+                AddLog("LoadSettings 完成");
+                
+                SetupTrayIcon();
+                AddLog("SetupTrayIcon 完成");
+                
+                // 确保窗口完全加载后再启用快捷键
+                this.Loaded += MainWindow_Loaded;
+                this.StateChanged += MainWindow_StateChanged;
+                
+                AddLog("MainWindow 构造函数完成");
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show($"MainWindow 初始化失败: {ex.Message}\n\n{ex.StackTrace}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw;
+            }
+        }
+        
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            // 窗口加载完成后，确保所有服务都已正确初始化
+            if (!string.IsNullOrEmpty(_settings?.HotKey))
+            {
+                _hotkeyService?.UnregisterHotkey();
+                var windowInteropHelper = new System.Windows.Interop.WindowInteropHelper(this);
+                _hotkeyService?.RegisterHotkey(windowInteropHelper.Handle, _settings.HotKey);
+            }
+            
+            // 检查是否需要启动时最小化到托盘
+            if (_settings?.MinimizeToTray == true)
+            {
+                this.WindowState = WindowState.Minimized;
+                this.Hide();
+            }
+        }
+        
+        private void MainWindow_StateChanged(object? sender, EventArgs e)
+        {
+            if (this.WindowState == WindowState.Minimized)
+            {
+                this.Hide();
+            }
+        }
+
+        private void InitializeServices()
+        {
+            _hotkeyService = new HotkeyService();
+            _hotkeyService.HotkeyPressed += OnHotkeyPressed;
+            _hotkeyService.HotkeyReleased += OnHotkeyReleased;
+
+            _speechService = new SpeechRecognizerService();
+            _speechService.RecognitionStarted += OnRecognitionStarted;
+            _speechService.RecognitionCompleted += OnRecognitionCompleted;
+            _speechService.RecognitionFailed += OnRecognitionFailed;
+            _speechService.PartialResultReceived += OnPartialResultReceived;
+
+            _chatGptService = new ChatGptService();
+        }
+
+        private void LoadSettings()
+        {
+            _settings = ConfigManager.LoadSettings();
+            
+            if (_settings != null)
+            {
+                // 设置API Key (PasswordBox需要特殊处理)
+                ApiKeyPasswordBox.Password = _settings.OpenAIApiKey ?? "";
+                
+                // 设置模型
+                for (int i = 0; i < ModelComboBox.Items.Count; i++)
+                {
+                    if (((ComboBoxItem)ModelComboBox.Items[i]).Content.ToString() == _settings.ModelName)
+                    {
+                        ModelComboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                
+                // 设置Speech Key
+                SpeechKeyPasswordBox.Password = _settings.AzureSpeechKey ?? "";
+                SpeechRegionTextBox.Text = _settings.AzureSpeechRegion ?? "southeastasia";
+                
+                // 设置快捷键
+                HotkeyTextBox.Text = _settings.HotKey ?? "Ctrl+Alt+M";
+                
+                // 设置处理模式
+                for (int i = 0; i < ProcessingModeComboBox.Items.Count; i++)
+                {
+                    if (((ComboBoxItem)ProcessingModeComboBox.Items[i]).Content.ToString() == _settings.DefaultProcessingMode)
+                    {
+                        ProcessingModeComboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                
+                // 设置录音模式
+                var recordingModeText = _settings.RecordingMode == "HoldToRecord" ? "按住录音 (Hold to Record)" : "切换录音 (Toggle Record)";
+                for (int i = 0; i < RecordingModeComboBox.Items.Count; i++)
+                {
+                    if (((ComboBoxItem)RecordingModeComboBox.Items[i]).Content.ToString() == recordingModeText)
+                    {
+                        RecordingModeComboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                
+                // 设置系统设置
+                StartupCheckBox.IsChecked = IsStartupEnabled();
+                MinimizeToTrayCheckBox.IsChecked = _settings.MinimizeToTray;
+            }
+        }
+
+        private void SetupTrayIcon()
+        {
+            try
+            {
+                _notifyIcon = new TaskbarIcon
+                {
+                    ToolTipText = "语音转文字助手"
+                };
+                
+                // 尝试加载图标文件
+                try
+                {
+                    if (System.IO.File.Exists("app.ico"))
+                    {
+                        _notifyIcon.Icon = new System.Drawing.Icon("app.ico");
+                    }
+                    else
+                    {
+                        // 使用默认系统图标
+                        _notifyIcon.Icon = System.Drawing.SystemIcons.Application;
+                    }
+                }
+                catch
+                {
+                    // 如果加载图标失败，使用默认图标
+                    _notifyIcon.Icon = System.Drawing.SystemIcons.Application;
+                }
+            
+            var contextMenu = new ContextMenu();
+            
+            var showMenuItem = new MenuItem
+            {
+                Header = "显示主窗口"
+            };
+            showMenuItem.Click += (s, e) => {
+                this.Show();
+                this.WindowState = WindowState.Normal;
+                this.Activate();
+            };
+            
+            var exitMenuItem = new MenuItem
+            {
+                Header = "退出"
+            };
+            exitMenuItem.Click += (s, e) => Application.Current.Shutdown();
+            
+            contextMenu.Items.Add(showMenuItem);
+            contextMenu.Items.Add(new Separator());
+            contextMenu.Items.Add(exitMenuItem);
+            
+            _notifyIcon.ContextMenu = contextMenu;
+            _notifyIcon.TrayLeftMouseUp += (s, e) => {
+                this.Show();
+                this.WindowState = WindowState.Normal;
+                this.Activate();
+            };
+            }
+            catch (Exception ex)
+            {
+                // 如果托盘图标初始化失败，记录错误但不阻止程序启动
+                AddLog($"托盘图标初始化失败: {ex.Message}");
+            }
+        }
+
+        // 快捷键文本框事件
+        private void HotkeyTextBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            var keyText = GetKeyText(e.Key, Keyboard.Modifiers);
+            if (!string.IsNullOrEmpty(keyText))
+            {
+                HotkeyTextBox.Text = keyText;
+                e.Handled = true;
+            }
+        }
+        
+        private void HotkeyTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            HotkeyTextBox.Text = "按下要设置的快捷键...";
+        }
+        
+        private void HotkeyTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (HotkeyTextBox.Text == "按下要设置的快捷键...")
+            {
+                HotkeyTextBox.Text = _settings?.HotKey ?? "Ctrl+Alt+M";
+            }
+        }
+
+        private string GetKeyText(Key key, ModifierKeys modifiers)
+        {
+            var result = new StringBuilder();
+            
+            if (modifiers.HasFlag(ModifierKeys.Control))
+                result.Append("Ctrl+");
+            if (modifiers.HasFlag(ModifierKeys.Alt))
+                result.Append("Alt+");
+            if (modifiers.HasFlag(ModifierKeys.Shift))
+                result.Append("Shift+");
+            if (modifiers.HasFlag(ModifierKeys.Windows))
+                result.Append("Win+");
+                
+            result.Append(key.ToString());
+            return result.ToString();
+        }
+
+        // 系统设置复选框事件
+        private void StartupCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_settings != null)
+            {
+                _settings.StartWithWindows = true;
+                SetStartupRegistry(true);
+            }
+        }
+        
+        private void StartupCheckBox_Unchecked(object sender, RoutedEventArgs e)
+        {
+            if (_settings != null)
+            {
+                _settings.StartWithWindows = false;
+                SetStartupRegistry(false);
+            }
+        }
+        
+        private void MinimizeToTrayCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_settings != null)
+            {
+                _settings.MinimizeToTray = true;
+                ConfigManager.SaveSettings(_settings);
+                AddLog("启动时最小化到托盘: 已启用");
+            }
+        }
+        
+        private void MinimizeToTrayCheckBox_Unchecked(object sender, RoutedEventArgs e)
+        {
+            if (_settings != null)
+            {
+                _settings.MinimizeToTray = false;
+                ConfigManager.SaveSettings(_settings);
+                AddLog("启动时最小化到托盘: 已禁用");
+            }
+        }
+
+        // 按钮事件
+        private async void TestButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (_speechService?.IsRecording == true)
+                {
+                    UpdateStatus("录音结束，正在处理...", Colors.Blue);
+                    HideRecordingOverlay();
+                    await (_speechService?.StopContinuousRecognitionAsync() ?? Task.CompletedTask);
+                    TestButton.Content = "测试录音";
+                }
+                else
+                {
+                    if (string.IsNullOrEmpty(SpeechKeyPasswordBox.Password))
+                    {
+                        MessageBox.Show("请先设置Azure Speech Key", "错误", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+                    
+                    _speechService?.Initialize(SpeechKeyPasswordBox.Password, SpeechRegionTextBox.Text);
+                    UpdateStatus("开始测试录音...", Colors.Orange);
+                    ShowRecordingOverlay();
+                    await (_speechService?.StartContinuousRecognitionAsync() ?? Task.CompletedTask);
+                    TestButton.Content = "停止录音";
+                }
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"测试录音失败: {ex.Message}", Colors.Red);
+                AddLog($"测试录音错误: {ex.Message}");
+                TestButton.Content = "测试录音";
+            }
+        }
+        
+        private void SaveButton_Click(object sender, RoutedEventArgs e)
+        {
+            SaveSettings();
+        }
+        
+        private void MinimizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            this.Hide();
+        }
+        
+        private void ExitButton_Click(object sender, RoutedEventArgs e)
+        {
+            Application.Current.Shutdown();
+        }
+
+        private void SaveSettings()
+        {
+            try
+            {
+                if (_settings == null) _settings = new AppSettings();
+                
+                _settings.OpenAIApiKey = ApiKeyPasswordBox.Password;
+                _settings.ModelName = ((ComboBoxItem)ModelComboBox.SelectedItem)?.Content?.ToString() ?? "gpt-3.5-turbo";
+                _settings.AzureSpeechKey = SpeechKeyPasswordBox.Password;
+                _settings.AzureSpeechRegion = SpeechRegionTextBox.Text;
+                _settings.HotKey = HotkeyTextBox.Text;
+                _settings.DefaultProcessingMode = ((ComboBoxItem)ProcessingModeComboBox.SelectedItem)?.Content?.ToString() ?? "TranslateToEnglishEmail";
+                
+                var recordingModeText = ((ComboBoxItem)RecordingModeComboBox.SelectedItem)?.Content?.ToString();
+                _settings.RecordingMode = recordingModeText?.Contains("Hold") == true ? "HoldToRecord" : "ToggleRecord";
+                
+                _settings.StartWithWindows = StartupCheckBox.IsChecked == true;
+                _settings.MinimizeToTray = MinimizeToTrayCheckBox.IsChecked == true;
+                
+                ConfigManager.SaveSettings(_settings);
+                
+                // 重新注册快捷键
+                _hotkeyService?.UnregisterHotkey();
+                var windowInteropHelper = new System.Windows.Interop.WindowInteropHelper(this);
+                _hotkeyService?.RegisterHotkey(windowInteropHelper.Handle, _settings.HotKey);
+                
+                UpdateStatus("设置已保存", Colors.Green);
+                AddLog("设置已保存到配置文件");
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"保存设置失败: {ex.Message}", Colors.Red);
+                AddLog($"保存设置错误: {ex.Message}");
+            }
+        }
+
+        // 设置开机自启动
+        private void SetStartupRegistry(bool enable)
+        {
+            try
+            {
+                const string keyName = "Speech2TextAssistant";
+                using var key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
+                
+                if (enable)
+                {
+                    var exePath = System.Reflection.Assembly.GetExecutingAssembly().Location.Replace(".dll", ".exe");
+                    key?.SetValue(keyName, $"\"{exePath}\"");
+                    AddLog("已设置开机自动启动");
+                }
+                else
+                {
+                    key?.DeleteValue(keyName, false);
+                    AddLog("已取消开机自动启动");
+                }
+            }
+            catch (Exception ex)
+            {
+                AddLog($"设置开机自启动失败: {ex.Message}");
+                UpdateStatus($"设置开机自启动失败: {ex.Message}", Colors.Red);
+            }
+        }
+        
+        private bool IsStartupEnabled()
+        {
+            try
+            {
+                const string keyName = "Speech2TextAssistant";
+                using var key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", false);
+                return key?.GetValue(keyName) != null;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        // 快捷键事件处理
+        private async void OnHotkeyPressed(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (_settings == null)
+                {
+                    UpdateStatus("设置未加载，请稍后再试", Colors.Red);
+                    return;
+                }
+                
+                if (string.IsNullOrEmpty(_settings.AzureSpeechKey))
+                {
+                    UpdateStatus("请先设置Azure Speech Key", Colors.Red);
+                    return;
+                }
+                
+                if (_speechService == null)
+                {
+                    UpdateStatus("语音服务未初始化", Colors.Red);
+                    return;
+                }
+                
+                if (_settings.RecordingMode == "ToggleRecord")
+                {
+                    if (!_isToggleRecording && _speechService?.IsRecording != true)
+                    {
+                        _isToggleRecording = true;
+                        _speechService?.Initialize(_settings.AzureSpeechKey, _settings.AzureSpeechRegion ?? "eastus");
+                        UpdateStatus("开始录音...", Colors.Orange);
+                        ShowRecordingOverlay();
+                        await (_speechService?.StartContinuousRecognitionAsync() ?? Task.CompletedTask);
+                    }
+                    else if (_isToggleRecording && _speechService?.IsRecording == true)
+                    {
+                        _isToggleRecording = false;
+                        UpdateStatus("录音结束，正在处理...", Colors.Blue);
+                        HideRecordingOverlay();
+                        await (_speechService?.StopContinuousRecognitionAsync() ?? Task.CompletedTask);
+                    }
+                }
+                else
+                {
+                    if (_speechService?.IsRecording == true)
+                    {
+                        return;
+                    }
+                    
+                    _speechService?.Initialize(_settings.AzureSpeechKey, _settings.AzureSpeechRegion ?? "eastus");
+                    UpdateStatus("开始录音...", Colors.Orange);
+                    ShowRecordingOverlay();
+                    await (_speechService?.StartContinuousRecognitionAsync() ?? Task.CompletedTask);
+                }
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"启动录音失败: {ex.Message}", Colors.Red);
+                AddLog($"快捷键录音错误: {ex.Message}");
+                _isToggleRecording = false;
+            }
+        }
+
+        private async void OnHotkeyReleased(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (_settings?.RecordingMode != "HoldToRecord")
+                {
+                    return;
+                }
+                
+                if (_speechService?.IsRecording == true)
+                {
+                    UpdateStatus("录音结束，正在处理...", Colors.Blue);
+                    HideRecordingOverlay();
+                    await (_speechService?.StopContinuousRecognitionAsync() ?? Task.CompletedTask);
+                }
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"停止录音失败: {ex.Message}", Colors.Red);
+                AddLog($"快捷键停止录音错误: {ex.Message}");
+                HideRecordingOverlay();
+            }
+        }
+
+        // 录音覆盖层管理
+        private void ShowRecordingOverlay()
+        {
+            this.Dispatcher.Invoke(() =>
+            {
+                try
+                {
+                    if (_recordingOverlay == null || !_recordingOverlay.IsLoaded)
+                    {
+                        _recordingOverlay = new RecordingOverlayWpf();
+                    }
+                    _recordingOverlay.Show();
+                }
+                catch (Exception ex)
+                {
+                    AddLog($"显示录音覆盖层失败: {ex.Message}");
+                }
+            });
+        }
+
+        private void HideRecordingOverlay()
+        {
+            this.Dispatcher.Invoke(() =>
+            {
+                try
+                {
+                    _recordingOverlay?.Hide();
+                }
+                catch (Exception ex)
+                {
+                    AddLog($"隐藏录音覆盖层失败: {ex.Message}");
+                }
+            });
+        }
+
+        // 语音识别事件处理
+        private void OnRecognitionStarted(object? sender, EventArgs e)
+        {
+            this.Dispatcher.Invoke(() =>
+            {
+                UpdateStatus("正在录音...", Colors.Orange);
+                AddLog("开始语音识别");
+            });
+        }
+
+        private void OnRecognitionCompleted(object? sender, string recognizedText)
+        {
+            this.Dispatcher.Invoke(async () =>
+            {
+                try
+                {
+                    HideRecordingOverlay();
+                    
+                    if (string.IsNullOrWhiteSpace(recognizedText))
+                    {
+                        UpdateStatus("未识别到语音内容", Colors.Orange);
+                        AddLog("语音识别完成，但未识别到内容");
+                        return;
+                    }
+                    
+                    UpdateStatus("正在处理文本...", Colors.Blue);
+                    AddLog($"识别结果: {recognizedText}");
+                    
+                    if (!string.IsNullOrEmpty(_settings?.OpenAIApiKey))
+                    {
+                        _chatGptService.Initialize(_settings.OpenAIApiKey, _settings.ModelName ?? "gpt-3.5-turbo");
+                        
+                        // 将字符串转换为枚举
+                        var promptType = _settings.DefaultProcessingMode switch
+                        {
+                            "TranslateToEnglish" => ChatGptPromptType.TranslateToEnglish,
+                            "TranslateToEnglishEmail" => ChatGptPromptType.TranslateToEnglishEmail,
+                            "FormatAsEmail" => ChatGptPromptType.FormatAsEmail,
+                            "Summarize" => ChatGptPromptType.Summarize,
+                            "CustomPrompt" => ChatGptPromptType.CustomPrompt,
+                            _ => ChatGptPromptType.TranslateToEnglishEmail
+                        };
+                        
+                        var processedText = await _chatGptService.ProcessTextAsync(recognizedText, promptType);
+                        
+                        if (!string.IsNullOrEmpty(processedText))
+                        {
+                            System.Windows.Clipboard.SetText(processedText);
+                            await OutputSimulator.SendTextWithClipboardAsync(processedText);
+                            UpdateStatus("处理完成，结果已输出到光标位置", Colors.Green);
+                            AddLog($"处理结果: {processedText}");
+                        }
+                        else
+                        {
+                            System.Windows.Clipboard.SetText(recognizedText);
+                            await OutputSimulator.SendTextWithClipboardAsync(recognizedText);
+                            UpdateStatus("AI处理失败，原文已输出到光标位置", Colors.Orange);
+                            AddLog("AI处理失败，使用原始识别结果");
+                        }
+                    }
+                    else
+                    {
+                        System.Windows.Clipboard.SetText(recognizedText);
+                        await OutputSimulator.SendTextWithClipboardAsync(recognizedText);
+                        UpdateStatus("识别完成，结果已输出到光标位置", Colors.Green);
+                        AddLog("未设置OpenAI API Key，直接输出识别结果");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    UpdateStatus($"处理失败: {ex.Message}", Colors.Red);
+                    AddLog($"处理错误: {ex.Message}");
+                }
+            });
+        }
+
+        private void OnRecognitionFailed(object? sender, string error)
+        {
+            this.Dispatcher.Invoke(() =>
+            {
+                HideRecordingOverlay();
+                UpdateStatus($"识别失败: {error}", Colors.Red);
+                AddLog($"语音识别失败: {error}");
+            });
+        }
+
+        private void OnPartialResultReceived(object? sender, string partialText)
+        {
+            this.Dispatcher.Invoke(() =>
+            {
+                _recordingOverlay?.UpdateRecognizedText(partialText);
+            });
+        }
+
+        // UI更新方法
+        private void UpdateStatus(string message, MediaColor color)
+        {
+            this.Dispatcher.Invoke(() =>
+            {
+                StatusLabel.Content = $"状态: {message}";
+                StatusLabel.Foreground = new SolidColorBrush(color);
+            });
+        }
+
+        private void AddLog(string message)
+        {
+            this.Dispatcher.Invoke(() =>
+            {
+                var timestamp = DateTime.Now.ToString("HH:mm:ss");
+                LogListBox.Items.Add($"[{timestamp}] {message}");
+                
+                // 自动滚动到最新日志
+                if (LogListBox.Items.Count > 0)
+                {
+                    LogListBox.ScrollIntoView(LogListBox.Items[LogListBox.Items.Count - 1]);
+                }
+                
+                // 限制日志数量
+                while (LogListBox.Items.Count > 1000)
+                {
+                    LogListBox.Items.RemoveAt(0);
+                }
+            });
+        }
+
+        protected override void OnClosing(CancelEventArgs e)
+        {
+            // 清理资源
+            _hotkeyService?.UnregisterHotkey();
+            _speechService?.StopRecognition();
+            _notifyIcon?.Dispose();
+            _recordingOverlay?.Close();
+            
+            base.OnClosing(e);
+        }
+    }
+}

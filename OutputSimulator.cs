@@ -1,5 +1,7 @@
 using System.Runtime.InteropServices;
 using System.ComponentModel;
+using System.Windows;
+using System.Windows.Input;
 
 namespace Speech2TextAssistant;
 
@@ -20,6 +22,16 @@ public class OutputSimulator
     [DllImport("kernel32.dll")]
     private static extern uint GetCurrentThreadId();
 
+    [DllImport("user32.dll")]
+    private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+
+    private const int KEYEVENTF_KEYDOWN = 0x0000;
+    private const int KEYEVENTF_KEYUP = 0x0002;
+    private const int VK_CONTROL = 0x11;
+    private const int VK_V = 0x56;
+    private const int VK_RETURN = 0x0D;
+    private const int VK_TAB = 0x09;
+
     public static async Task SendTextToActiveWindowAsync(string text)
     {
         try
@@ -34,11 +46,11 @@ public class OutputSimulator
             text = EscapeSpecialCharacters(text);
 
             // 发送文本
-            SendKeys.SendWait(text);
+            SendTextDirect(text);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"输出文本失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"输出文本失败: {ex.Message}", "错误");
         }
     }
 
@@ -57,7 +69,7 @@ public class OutputSimulator
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show($"粘贴文本失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show($"粘贴文本失败: {ex.Message}", "错误");
                     }
                 });
                 
@@ -68,7 +80,7 @@ public class OutputSimulator
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"粘贴文本失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"粘贴文本失败: {ex.Message}", "错误");
         }
     }
 
@@ -92,21 +104,21 @@ public class OutputSimulator
                 Thread.Sleep(10);
 
                 // 将文本放入剪贴板
-                Clipboard.SetText(text, TextDataFormat.UnicodeText);
+                Clipboard.SetText(text);
                 Thread.Sleep(50);
 
                 // 验证剪贴板内容
                 if (Clipboard.ContainsText() && Clipboard.GetText() == text)
                 {
                     // 发送Ctrl+V粘贴
-                    SendKeys.SendWait("^v");
+                    SendCtrlV();
                     Thread.Sleep(100);
 
                     // 延迟后恢复原剪贴板内容
                     Thread.Sleep(400);
                     if (!string.IsNullOrEmpty(originalClipboard))
                     {
-                        Clipboard.SetText(originalClipboard, TextDataFormat.UnicodeText);
+                        Clipboard.SetText(originalClipboard);
                     }
                     return; // 成功，退出重试循环
                 }
@@ -168,13 +180,14 @@ public class OutputSimulator
                 {
                     // 处理控制字符（如换行符）
                     if (c == '\n')
-                        SendKeys.SendWait("{ENTER}");
-                    else if (c == '\t') SendKeys.SendWait("{TAB}");
+                        SendKey(VK_RETURN);
+                    else if (c == '\t') 
+                        SendKey(VK_TAB);
                 }
                 else
                 {
                     // 发送普通字符
-                    SendKeys.SendWait(c.ToString());
+                    SendChar(c);
                 }
 
                 // 小延迟确保字符正确发送
@@ -183,7 +196,52 @@ public class OutputSimulator
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"直接输入文本失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"直接输入文本失败: {ex.Message}", "错误");
         }
     }
+
+    private static void SendCtrlV()
+    {
+        // 按下Ctrl
+        keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYDOWN, UIntPtr.Zero);
+        // 按下V
+        keybd_event(VK_V, 0, KEYEVENTF_KEYDOWN, UIntPtr.Zero);
+        // 释放V
+        keybd_event(VK_V, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+        // 释放Ctrl
+        keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+    }
+
+    private static void SendKey(int vkCode)
+    {
+        keybd_event((byte)vkCode, 0, KEYEVENTF_KEYDOWN, UIntPtr.Zero);
+        keybd_event((byte)vkCode, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+    }
+
+    private static void SendChar(char c)
+    {
+        // 使用Unicode输入方法
+        var vkCode = VkKeyScan(c);
+        if (vkCode != -1)
+        {
+            var key = (byte)(vkCode & 0xFF);
+            var shift = (vkCode & 0x100) != 0;
+            
+            if (shift)
+            {
+                keybd_event(0x10, 0, KEYEVENTF_KEYDOWN, UIntPtr.Zero); // Shift down
+            }
+            
+            keybd_event(key, 0, KEYEVENTF_KEYDOWN, UIntPtr.Zero);
+            keybd_event(key, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+            
+            if (shift)
+            {
+                keybd_event(0x10, 0, KEYEVENTF_KEYUP, UIntPtr.Zero); // Shift up
+            }
+        }
+    }
+
+    [DllImport("user32.dll")]
+    private static extern short VkKeyScan(char ch);
 }

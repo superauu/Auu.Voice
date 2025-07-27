@@ -1,0 +1,112 @@
+<Window x:Class="Speech2TextAssistant.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="语音转文字助手" Height="700" Width="800"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="CanMinimize">
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- API设置组 -->
+        <GroupBox Grid.Row="0" Header="API 设置" Margin="0,0,0,10" Padding="12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <Label Grid.Row="0" Grid.Column="0" Content="OpenAI API Key:" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                <PasswordBox x:Name="ApiKeyPasswordBox" Grid.Row="0" Grid.Column="1" Margin="0,0,0,5" Height="25"/>
+                
+                <Label Grid.Row="1" Grid.Column="0" Content="GPT 模型:" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                <ComboBox x:Name="ModelComboBox" Grid.Row="1" Grid.Column="1" Margin="0,0,0,5" Height="25">
+                    <ComboBoxItem Content="gpt-3.5-turbo"/>
+                    <ComboBoxItem Content="gpt-4"/>
+                    <ComboBoxItem Content="gpt-4-turbo"/>
+                    <ComboBoxItem Content="gpt-4o"/>
+                </ComboBox>
+                
+                <Label Grid.Row="2" Grid.Column="0" Content="Azure Speech Key:" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                <PasswordBox x:Name="SpeechKeyPasswordBox" Grid.Row="2" Grid.Column="1" Margin="0,0,0,5" Height="25"/>
+                
+                <Label Grid.Row="3" Grid.Column="0" Content="区域:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBox x:Name="SpeechRegionTextBox" Grid.Row="3" Grid.Column="1" Text="southeastasia" Height="25"/>
+            </Grid>
+        </GroupBox>
+        
+        <!-- 功能设置组 -->
+        <GroupBox Grid.Row="1" Header="功能设置" Margin="0,0,0,10" Padding="12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <Label Grid.Row="0" Grid.Column="0" Content="快捷键:" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                <TextBox x:Name="HotkeyTextBox" Grid.Row="0" Grid.Column="1" Margin="0,0,0,5" Height="25" 
+                         KeyDown="HotkeyTextBox_KeyDown" GotFocus="HotkeyTextBox_GotFocus" LostFocus="HotkeyTextBox_LostFocus"/>
+                
+                <Label Grid.Row="1" Grid.Column="0" Content="处理模式:" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                <ComboBox x:Name="ProcessingModeComboBox" Grid.Row="1" Grid.Column="1" Margin="0,0,0,5" Height="25">
+                    <ComboBoxItem Content="TranslateToEnglishEmail"/>
+                    <ComboBoxItem Content="TranslateToEnglish"/>
+                    <ComboBoxItem Content="FormatAsEmail"/>
+                    <ComboBoxItem Content="Summarize"/>
+                    <ComboBoxItem Content="CustomPrompt"/>
+                </ComboBox>
+                
+                <Label Grid.Row="2" Grid.Column="0" Content="录音模式:" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                <ComboBox x:Name="RecordingModeComboBox" Grid.Row="2" Grid.Column="1" Margin="0,0,0,5" Height="25">
+                    <ComboBoxItem Content="按住录音 (Hold to Record)"/>
+                    <ComboBoxItem Content="切换录音 (Toggle Record)"/>
+                </ComboBox>
+                
+                <Label Grid.Row="3" Grid.Column="0" Content="系统设置:" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,5">
+                    <CheckBox x:Name="StartupCheckBox" Content="开机自动启动" Margin="0,0,15,0" 
+                              Checked="StartupCheckBox_Checked" Unchecked="StartupCheckBox_Unchecked"/>
+                    <CheckBox x:Name="MinimizeToTrayCheckBox" Content="启动时最小化到托盘" 
+                              Checked="MinimizeToTrayCheckBox_Checked" Unchecked="MinimizeToTrayCheckBox_Unchecked"/>
+                </StackPanel>
+                
+                <Label Grid.Row="4" Grid.Column="0" Content="测试:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <Button x:Name="TestButton" Grid.Row="4" Grid.Column="1" Content="测试录音" Width="100" Height="30" 
+                        HorizontalAlignment="Left" Click="TestButton_Click"/>
+            </Grid>
+        </GroupBox>
+        
+        <!-- 日志区域 -->
+        <DockPanel Grid.Row="2" Margin="0,0,0,10">
+            <Label DockPanel.Dock="Top" x:Name="StatusLabel" Content="状态: 就绪" Height="25" 
+                   Padding="5" Background="#F0F0F0" BorderBrush="#CCCCCC" BorderThickness="1"/>
+            <Label DockPanel.Dock="Top" Content="处理日志:" Height="20" Padding="5,5,5,2"/>
+            <ListBox x:Name="LogListBox" FontFamily="Consolas" FontSize="8.5" 
+                     Background="White" BorderBrush="#CCCCCC" BorderThickness="1"/>
+        </DockPanel>
+        
+        <!-- 按钮区域 -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+            <Button Content="最小化到托盘" Width="100" Height="30" Margin="0,0,5,0" Click="MinimizeButton_Click"/>
+            <Button Content="保存设置" Width="80" Height="30" Margin="0,0,5,0" Click="SaveButton_Click"/>
+            <Button Content="退出" Width="80" Height="30" Click="ExitButton_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

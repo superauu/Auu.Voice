@@ -1,6 +1,8 @@
+using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Windows;
 using Speech2TextAssistant.Models;
 
 namespace Speech2TextAssistant;
@@ -40,7 +42,7 @@ public class ConfigManager
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"加载配置失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"加载配置失败: {ex.Message}", "错误");
         }
 
         return new AppSettings();
@@ -78,7 +80,7 @@ public class ConfigManager
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"保存配置失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"保存配置失败: {ex.Message}", "错误");
         }
     }
 

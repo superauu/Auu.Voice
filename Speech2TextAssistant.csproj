@@ -3,7 +3,7 @@
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
         <TargetFramework>net9.0-windows</TargetFramework>
-        <UseWindowsForms>true</UseWindowsForms>
+        <UseWPF>true</UseWPF>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <ApplicationIcon>app.ico</ApplicationIcon>
@@ -12,12 +12,16 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.CognitiveServices.Speech" Version="1.40.0"/>
         <PackageReference Include="System.Text.Json" Version="9.0.0"/>
+        <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="1.1.0"/>
+        <FrameworkReference Include="Microsoft.WindowsDesktop.App" />
     </ItemGroup>
     
     <ItemGroup>
         <Compile Remove="cpp\**" />
         <EmbeddedResource Remove="cpp\**" />
         <None Remove="cpp\**" />
+        <Page Remove="cpp\**" />
+        <ApplicationDefinition Remove="cpp\**" />
     </ItemGroup>
 
 </Project>

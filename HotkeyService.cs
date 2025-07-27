@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Windows.Forms;
 using Timer = System.Threading.Timer;
 
 namespace Speech2TextAssistant;
