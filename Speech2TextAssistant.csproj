@@ -17,6 +17,12 @@
     </ItemGroup>
     
     <ItemGroup>
+        <Content Include="app.ico">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </Content>
+    </ItemGroup>
+    
+    <ItemGroup>
         <Compile Remove="cpp\**" />
         <EmbeddedResource Remove="cpp\**" />
         <None Remove="cpp\**" />

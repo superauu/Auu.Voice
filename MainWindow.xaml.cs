@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Text;
@@ -669,7 +670,7 @@ namespace Speech2TextAssistant
         {
             ProcessingModeComboBox.Items.Clear();
             
-            foreach (var mode in _settings.ProcessingModes)
+            foreach (var mode in _settings?.ProcessingModes ?? new List<ProcessingMode>())
             {
                 ProcessingModeComboBox.Items.Add(new ComboBoxItem
                 {
@@ -682,7 +683,7 @@ namespace Speech2TextAssistant
             for (int i = 0; i < ProcessingModeComboBox.Items.Count; i++)
             {
                 var item = (ComboBoxItem)ProcessingModeComboBox.Items[i];
-                if (item.Tag.ToString() == _settings.DefaultProcessingMode)
+                if (item.Tag?.ToString() == _settings?.DefaultProcessingMode)
                 {
                     ProcessingModeComboBox.SelectedIndex = i;
                     break;
@@ -692,19 +693,22 @@ namespace Speech2TextAssistant
         
         private void ManageModesButton_Click(object sender, RoutedEventArgs e)
         {
-            var managerWindow = new ProcessingModeManagerWindow(_settings.ProcessingModes);
-            managerWindow.SetDefaultMode(_settings.DefaultProcessingMode);
+            var managerWindow = new ProcessingModeManagerWindow(_settings?.ProcessingModes ?? new List<ProcessingMode>());
+            managerWindow.SetDefaultMode(_settings?.DefaultProcessingMode ?? string.Empty);
             
             if (managerWindow.ShowDialog() == true)
             {
                 // 更新设置中的处理模式列表
-                _settings.ProcessingModes = managerWindow.GetProcessingModes();
-                
-                // 更新默认模式
-                var defaultModeName = managerWindow.GetDefaultModeName();
-                if (!string.IsNullOrEmpty(defaultModeName))
+                if (_settings != null)
                 {
-                    _settings.DefaultProcessingMode = defaultModeName;
+                    _settings.ProcessingModes = managerWindow.GetProcessingModes() ?? new List<ProcessingMode>();
+                    
+                    // 更新默认模式
+                    var defaultModeName = managerWindow.GetDefaultModeName();
+                    if (!string.IsNullOrEmpty(defaultModeName))
+                    {
+                        _settings.DefaultProcessingMode = defaultModeName;
+                    }
                 }
                 
                 // 重新加载处理模式
@@ -753,10 +757,10 @@ namespace Speech2TextAssistant
                     
                     if (!string.IsNullOrEmpty(_settings?.OpenAIApiKey))
                     {
-                        _chatGptService.Initialize(_settings.OpenAIApiKey, _settings.ModelName ?? "gpt-3.5-turbo");
+                        _chatGptService.Initialize(_settings.OpenAIApiKey!, _settings.ModelName ?? "gpt-3.5-turbo");
                         
                         // 获取当前选中的处理模式
-                        var selectedMode = _settings.GetProcessingMode(_settings.DefaultProcessingMode);
+                        var selectedMode = _settings.GetProcessingMode(_settings.DefaultProcessingMode ?? string.Empty);
                         if (selectedMode == null)
                         {
                             selectedMode = _settings.GetDefaultProcessingModeObject();
