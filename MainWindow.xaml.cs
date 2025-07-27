@@ -160,9 +160,13 @@ namespace Speech2TextAssistant
                 // 尝试加载图标文件
                 try
                 {
-                    if (System.IO.File.Exists("app.ico"))
+                    // 获取程序所在目录的绝对路径
+                    var exeDirectory = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+                    var iconPath = System.IO.Path.Combine(exeDirectory ?? "", "app.ico");
+                    
+                    if (System.IO.File.Exists(iconPath))
                     {
-                        _notifyIcon.Icon = new System.Drawing.Icon("app.ico");
+                        _notifyIcon.Icon = new System.Drawing.Icon(iconPath);
                     }
                     else
                     {
