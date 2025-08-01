@@ -558,6 +558,9 @@ namespace Speech2TextAssistant
         {
             try
             {
+                // 在显示输入窗口之前保存当前活动窗口
+                var targetWindow = OutputSimulator.GetCurrentForegroundWindow();
+                
                 this.Dispatcher.Invoke(() =>
                 {
                     var textInputWindow = new TextInputWindow();
@@ -565,8 +568,8 @@ namespace Speech2TextAssistant
                     
                     if (result == true && !string.IsNullOrWhiteSpace(textInputWindow.InputText))
                     {
-                        // 异步处理文本输入
-                        _ = Task.Run(async () => await ProcessTextInputAsync(textInputWindow.InputText));
+                        // 异步处理文本输入，传递目标窗口句柄
+                        _ = Task.Run(async () => await ProcessTextInputAsync(textInputWindow.InputText, targetWindow));
                     }
                 });
             }
@@ -577,7 +580,7 @@ namespace Speech2TextAssistant
             }
         }
         
-        private async Task ProcessTextInputAsync(string inputText)
+        private async Task ProcessTextInputAsync(string inputText, IntPtr targetWindow = default)
         {
             try
             {
@@ -610,8 +613,15 @@ namespace Speech2TextAssistant
                 
                 if (!string.IsNullOrEmpty(processedText))
                 {
-                    // 发送处理后的文本到光标位置
-                    await OutputSimulator.SendTextToActiveWindowAsync(processedText);
+                    // 发送处理后的文本到指定窗口或当前活动窗口
+                    if (targetWindow != IntPtr.Zero)
+                    {
+                        await OutputSimulator.SendTextToSpecificWindowAsync(processedText, targetWindow);
+                    }
+                    else
+                    {
+                        await OutputSimulator.SendTextToActiveWindowAsync(processedText);
+                    }
                     
                     this.Dispatcher.Invoke(() =>
                     {

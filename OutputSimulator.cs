@@ -9,6 +9,14 @@ public class OutputSimulator
 {
     [DllImport("user32.dll")]
     private static extern IntPtr GetForegroundWindow();
+    
+    /// <summary>
+    /// 获取当前前台窗口句柄
+    /// </summary>
+    public static IntPtr GetCurrentForegroundWindow()
+    {
+        return GetForegroundWindow();
+    }
 
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
@@ -96,6 +104,34 @@ public class OutputSimulator
 
             // 发送文本
             SendTextDirect(text);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"输出文本失败: {ex.Message}", "错误");
+        }
+    }
+    
+    /// <summary>
+    /// 向指定窗口发送文本
+    /// </summary>
+    public static async Task SendTextToSpecificWindowAsync(string text, IntPtr targetWindow)
+    {
+        try
+        {
+            if (targetWindow == IntPtr.Zero)
+            {
+                await SendTextToActiveWindowAsync(text);
+                return;
+            }
+
+            // 短暂延迟确保窗口准备就绪
+            await Task.Delay(100);
+
+            // 处理特殊字符
+            text = EscapeSpecialCharacters(text);
+
+            // 发送文本到指定窗口
+            SendTextToSpecificWindow(text, targetWindow);
         }
         catch (Exception ex)
         {
@@ -246,6 +282,46 @@ public class OutputSimulator
         catch (Exception ex)
         {
             MessageBox.Show($"直接输入文本失败: {ex.Message}", "错误");
+        }
+    }
+    
+    /// <summary>
+    /// 向指定窗口发送文本
+    /// </summary>
+    private static void SendTextToSpecificWindow(string text, IntPtr targetWindow)
+    {
+        try
+        {
+            if (targetWindow == IntPtr.Zero) return;
+
+            // 确保目标窗口获得焦点
+            SetForegroundWindow(targetWindow);
+            Thread.Sleep(150); // 稍微增加延迟确保窗口切换完成
+
+            // 逐字符发送，使用Unicode方式避免输入法影响
+            foreach (var c in text)
+            {
+                if (char.IsControl(c))
+                {
+                    // 处理控制字符（如换行符）
+                    if (c == '\n')
+                        SendKey(VK_RETURN);
+                    else if (c == '\t') 
+                        SendKey(VK_TAB);
+                }
+                else
+                {
+                    // 使用Unicode方式发送普通字符
+                    SendCharUnicode(c);
+                }
+
+                // 小延迟确保字符正确发送
+                Thread.Sleep(2);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"向指定窗口输入文本失败: {ex.Message}", "错误");
         }
     }
 

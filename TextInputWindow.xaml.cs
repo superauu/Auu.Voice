@@ -27,7 +27,18 @@ namespace Speech2TextAssistant
             SetWindowPositionNearMouse();
             
             // 设置焦点到文本框
-            Loaded += (s, e) => InputTextBox.Focus();
+            Loaded += (s, e) => 
+            {
+                // 确保窗口激活并获得焦点
+                this.Activate();
+                this.Focus();
+                // 延迟一点时间确保窗口完全加载后再设置文本框焦点
+                this.Dispatcher.BeginInvoke(new Action(() => 
+                {
+                    InputTextBox.Focus();
+                    InputTextBox.SelectAll();
+                }), System.Windows.Threading.DispatcherPriority.Input);
+            };
             
             // 支持ESC键取消
             KeyDown += TextInputWindow_KeyDown;
