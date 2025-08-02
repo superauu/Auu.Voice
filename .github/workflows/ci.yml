@@ -1,0 +1,145 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build
+      run: dotnet build --configuration ${{ matrix.configuration }} --no-restore
+      
+    - name: Test
+      run: dotnet test --configuration ${{ matrix.configuration }} --no-build --verbosity normal
+      
+    - name: Publish (Release only)
+      if: matrix.configuration == 'Release'
+      run: |
+        dotnet publish --configuration Release --output ./publish --no-build
+        
+    - name: Upload build artifacts
+      if: matrix.configuration == 'Release'
+      uses: actions/upload-artifact@v4
+      with:
+        name: AuuVoice-${{ github.sha }}
+        path: ./publish/
+        retention-days: 30
+
+  code-quality:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Code analysis
+      run: dotnet build --configuration Release --verbosity normal
+      
+    - name: Check formatting
+      run: dotnet format --verify-no-changes --verbosity diagnostic
+
+  security-scan:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Security scan
+      run: |
+        dotnet list package --vulnerable --include-transitive
+        dotnet list package --deprecated
+
+  release:
+    if: github.event_name == 'release'
+    needs: [build-and-test, code-quality, security-scan]
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build Release
+      run: dotnet build --configuration Release --no-restore
+      
+    - name: Publish Release
+      run: |
+        dotnet publish --configuration Release --output ./release --no-build
+        
+    - name: Create Release Archive
+      run: |
+        Compress-Archive -Path ./release/* -DestinationPath AuuVoice-${{ github.event.release.tag_name }}.zip
+        
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./AuuVoice-${{ github.event.release.tag_name }}.zip
+        asset_name: AuuVoice-${{ github.event.release.tag_name }}.zip
+        asset_content_type: application/zip
+
+  notify:
+    if: always()
+    needs: [build-and-test, code-quality, security-scan]
+    runs-on: windows-latest
+    
+    steps:
+    - name: Notify on success
+      if: needs.build-and-test.result == 'success' && needs.code-quality.result == 'success' && needs.security-scan.result == 'success'
+      run: echo "✅ All checks passed successfully!"
+      
+    - name: Notify on failure
+      if: needs.build-and-test.result == 'failure' || needs.code-quality.result == 'failure' || needs.security-scan.result == 'failure'
+      run: |
+        echo "❌ Some checks failed:"
+        echo "Build & Test: ${{ needs.build-and-test.result }}"
+        echo "Code Quality: ${{ needs.code-quality.result }}"
+        echo "Security Scan: ${{ needs.security-scan.result }}"
