@@ -129,7 +129,7 @@ namespace Speech2TextAssistant
         private void UpdateDisplayText()
         {
             var displayText = !string.IsNullOrEmpty(_recognizedText) ? _recognizedText : _currentText;
-            
+
             // 如果文字太长，只保留最新的内容
             var maxWidth = this.Width - 80; // 考虑边距
             var formattedText = new FormattedText(
@@ -140,13 +140,13 @@ namespace Speech2TextAssistant
                 StatusTextBlock.FontSize,
                 Brushes.White,
                 VisualTreeHelper.GetDpi(this).PixelsPerDip);
-            
+
             if (formattedText.Width > maxWidth)
             {
                 // 从后往前截取文字，确保显示最新内容
                 var words = displayText.Split(' ');
                 var truncatedText = "";
-                
+
                 for (int i = words.Length - 1; i >= 0; i--)
                 {
                     var testText = words[i] + (string.IsNullOrEmpty(truncatedText) ? "" : " " + truncatedText);
@@ -158,7 +158,7 @@ namespace Speech2TextAssistant
                         StatusTextBlock.FontSize,
                         Brushes.White,
                         VisualTreeHelper.GetDpi(this).PixelsPerDip);
-                    
+
                     if (testFormattedText.Width <= maxWidth)
                     {
                         truncatedText = testText;
@@ -168,7 +168,7 @@ namespace Speech2TextAssistant
                         break;
                     }
                 }
-                
+
                 // 如果截取后仍然为空或太长，则直接截取字符
                 if (string.IsNullOrEmpty(truncatedText))
                 {
@@ -183,19 +183,19 @@ namespace Speech2TextAssistant
                             StatusTextBlock.FontSize,
                             Brushes.White,
                             VisualTreeHelper.GetDpi(this).PixelsPerDip);
-                        
+
                         if (testFormattedText.Width <= maxWidth)
                         {
                             break;
                         }
-                        
+
                         truncatedText = truncatedText.Substring(1);
                     }
                 }
-                
+
                 displayText = truncatedText;
             }
-            
+
             StatusTextBlock.Text = displayText;
         }
 

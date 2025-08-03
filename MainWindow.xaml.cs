@@ -33,20 +33,20 @@ namespace Speech2TextAssistant
             {
                 InitializeComponent();
                 AddLog("InitializeComponent 完成");
-                
+
                 InitializeServices();
                 AddLog("InitializeServices 完成");
-                
+
                 LoadSettings();
                 AddLog("LoadSettings 完成");
-                
+
                 SetupTrayIcon();
                 AddLog("SetupTrayIcon 完成");
-                
+
                 // 确保窗口完全加载后再启用快捷键
                 this.Loaded += MainWindow_Loaded;
                 this.StateChanged += MainWindow_StateChanged;
-                
+
                 AddLog("MainWindow 构造函数完成");
             }
             catch (Exception ex)
@@ -55,7 +55,7 @@ namespace Speech2TextAssistant
                 throw;
             }
         }
-        
+
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             // 窗口加载完成后，确保所有服务都已正确初始化
@@ -68,7 +68,7 @@ namespace Speech2TextAssistant
                 UpdateStatus("监听已启动，按快捷键开始录音或文本输入", Colors.Green);
                 AddLog("快捷键监听已自动启动");
             }
-            
+
             // 检查是否需要启动时最小化到托盘
             if (_settings?.MinimizeToTray == true)
             {
@@ -76,7 +76,7 @@ namespace Speech2TextAssistant
                 this.Hide();
             }
         }
-        
+
         private void MainWindow_StateChanged(object? sender, EventArgs e)
         {
             if (this.WindowState == WindowState.Minimized)
@@ -104,12 +104,12 @@ namespace Speech2TextAssistant
         private void LoadSettings()
         {
             _settings = ConfigManager.LoadSettings();
-            
+
             if (_settings != null)
             {
                 // 设置API Key (PasswordBox需要特殊处理)
                 ApiKeyPasswordBox.Password = _settings.OpenAIApiKey ?? "";
-                
+
                 // 设置模型
                 for (int i = 0; i < ModelComboBox.Items.Count; i++)
                 {
@@ -119,18 +119,18 @@ namespace Speech2TextAssistant
                         break;
                     }
                 }
-                
+
                 // 设置Speech Key
                 SpeechKeyPasswordBox.Password = _settings.AzureSpeechKey ?? "";
                 SpeechRegionTextBox.Text = _settings.AzureSpeechRegion ?? "southeastasia";
-                
+
                 // 设置快捷键
                 HotkeyTextBox.Text = _settings.HotKey ?? "Ctrl+Alt+M";
                 TextInputHotkeyTextBox.Text = _settings.TextInputHotKey ?? "Ctrl+Alt+T";
-                
+
                 // 加载处理模式
                 LoadProcessingModes();
-                
+
                 // 设置录音模式
                 var recordingModeText = _settings.RecordingMode == "HoldToRecord" ? "按住录音 (Hold to Record)" : "切换录音 (Toggle Record)";
                 for (int i = 0; i < RecordingModeComboBox.Items.Count; i++)
@@ -141,7 +141,7 @@ namespace Speech2TextAssistant
                         break;
                     }
                 }
-                
+
                 // 设置系统设置
                 StartupCheckBox.IsChecked = IsStartupEnabled();
                 MinimizeToTrayCheckBox.IsChecked = _settings.MinimizeToTray;
@@ -156,14 +156,14 @@ namespace Speech2TextAssistant
                 {
                     ToolTipText = "语音转文字助手"
                 };
-                
+
                 // 尝试加载图标文件
                 try
                 {
                     // 获取程序所在目录的绝对路径
                     var exeDirectory = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
                     var iconPath = System.IO.Path.Combine(exeDirectory ?? "", "app.ico");
-                    
+
                     if (System.IO.File.Exists(iconPath))
                     {
                         _notifyIcon.Icon = new System.Drawing.Icon(iconPath);
@@ -179,35 +179,37 @@ namespace Speech2TextAssistant
                     // 如果加载图标失败，使用默认图标
                     _notifyIcon.Icon = System.Drawing.SystemIcons.Application;
                 }
-            
-            var contextMenu = new ContextMenu();
-            
-            var showMenuItem = new MenuItem
-            {
-                Header = "显示主窗口"
-            };
-            showMenuItem.Click += (s, e) => {
-                this.Show();
-                this.WindowState = WindowState.Normal;
-                this.Activate();
-            };
-            
-            var exitMenuItem = new MenuItem
-            {
-                Header = "退出"
-            };
-            exitMenuItem.Click += (s, e) => Application.Current.Shutdown();
-            
-            contextMenu.Items.Add(showMenuItem);
-            contextMenu.Items.Add(new Separator());
-            contextMenu.Items.Add(exitMenuItem);
-            
-            _notifyIcon.ContextMenu = contextMenu;
-            _notifyIcon.TrayLeftMouseUp += (s, e) => {
-                this.Show();
-                this.WindowState = WindowState.Normal;
-                this.Activate();
-            };
+
+                var contextMenu = new ContextMenu();
+
+                var showMenuItem = new MenuItem
+                {
+                    Header = "显示主窗口"
+                };
+                showMenuItem.Click += (s, e) =>
+                {
+                    this.Show();
+                    this.WindowState = WindowState.Normal;
+                    this.Activate();
+                };
+
+                var exitMenuItem = new MenuItem
+                {
+                    Header = "退出"
+                };
+                exitMenuItem.Click += (s, e) => Application.Current.Shutdown();
+
+                contextMenu.Items.Add(showMenuItem);
+                contextMenu.Items.Add(new Separator());
+                contextMenu.Items.Add(exitMenuItem);
+
+                _notifyIcon.ContextMenu = contextMenu;
+                _notifyIcon.TrayLeftMouseUp += (s, e) =>
+                {
+                    this.Show();
+                    this.WindowState = WindowState.Normal;
+                    this.Activate();
+                };
             }
             catch (Exception ex)
             {
@@ -226,14 +228,14 @@ namespace Speech2TextAssistant
                 e.Handled = true;
             }
         }
-        
+
         private void HotkeyTextBox_GotFocus(object sender, RoutedEventArgs e)
         {
             HotkeyTextBox.Text = "按下要设置的快捷键...";
             // 暂停快捷键监听，避免在设置快捷键时触发
             _hotkeyService?.PauseListening();
         }
-        
+
         private void HotkeyTextBox_LostFocus(object sender, RoutedEventArgs e)
         {
             if (HotkeyTextBox.Text == "按下要设置的快捷键...")
@@ -243,7 +245,7 @@ namespace Speech2TextAssistant
             // 恢复快捷键监听
             _hotkeyService?.ResumeListening();
         }
-        
+
         // 文本输入快捷键文本框事件
         private void TextInputHotkeyTextBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
@@ -254,14 +256,14 @@ namespace Speech2TextAssistant
                 e.Handled = true;
             }
         }
-        
+
         private void TextInputHotkeyTextBox_GotFocus(object sender, RoutedEventArgs e)
         {
             TextInputHotkeyTextBox.Text = "按下要设置的快捷键...";
             // 暂停快捷键监听，避免在设置快捷键时触发
             _hotkeyService?.PauseListening();
         }
-        
+
         private void TextInputHotkeyTextBox_LostFocus(object sender, RoutedEventArgs e)
         {
             if (TextInputHotkeyTextBox.Text == "按下要设置的快捷键...")
@@ -275,7 +277,7 @@ namespace Speech2TextAssistant
         private string GetKeyText(Key key, ModifierKeys modifiers)
         {
             var result = new StringBuilder();
-            
+
             if (modifiers.HasFlag(ModifierKeys.Control))
                 result.Append("Ctrl+");
             if (modifiers.HasFlag(ModifierKeys.Alt))
@@ -284,7 +286,7 @@ namespace Speech2TextAssistant
                 result.Append("Shift+");
             if (modifiers.HasFlag(ModifierKeys.Windows))
                 result.Append("Win+");
-                
+
             // 处理数字键，将D1-D9转换为1-9
             var keyString = key.ToString();
             if (keyString.StartsWith("D") && keyString.Length == 2 && char.IsDigit(keyString[1]))
@@ -295,7 +297,7 @@ namespace Speech2TextAssistant
             {
                 result.Append(keyString);
             }
-            
+
             return result.ToString();
         }
 
@@ -308,7 +310,7 @@ namespace Speech2TextAssistant
                 SetStartupRegistry(true);
             }
         }
-        
+
         private void StartupCheckBox_Unchecked(object sender, RoutedEventArgs e)
         {
             if (_settings != null)
@@ -317,7 +319,7 @@ namespace Speech2TextAssistant
                 SetStartupRegistry(false);
             }
         }
-        
+
         private void MinimizeToTrayCheckBox_Checked(object sender, RoutedEventArgs e)
         {
             if (_settings != null)
@@ -327,7 +329,7 @@ namespace Speech2TextAssistant
                 AddLog("启动时最小化到托盘: 已启用");
             }
         }
-        
+
         private void MinimizeToTrayCheckBox_Unchecked(object sender, RoutedEventArgs e)
         {
             if (_settings != null)
@@ -357,7 +359,7 @@ namespace Speech2TextAssistant
                         MessageBox.Show("请先设置Azure Speech Key", "错误", MessageBoxButton.OK, MessageBoxImage.Warning);
                         return;
                     }
-                    
+
                     _speechService?.Initialize(SpeechKeyPasswordBox.Password, SpeechRegionTextBox.Text);
                     UpdateStatus("开始测试录音...", Colors.Orange);
                     ShowRecordingOverlay();
@@ -372,17 +374,17 @@ namespace Speech2TextAssistant
                 TestButton.Content = "测试录音";
             }
         }
-        
+
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             SaveSettings();
         }
-        
+
         private void MinimizeButton_Click(object sender, RoutedEventArgs e)
         {
             this.Hide();
         }
-        
+
         private void ExitButton_Click(object sender, RoutedEventArgs e)
         {
             Application.Current.Shutdown();
@@ -393,7 +395,7 @@ namespace Speech2TextAssistant
             try
             {
                 if (_settings == null) _settings = new AppSettings();
-                
+
                 _settings.OpenAIApiKey = ApiKeyPasswordBox.Password;
                 _settings.ModelName = ((ComboBoxItem)ModelComboBox.SelectedItem)?.Content?.ToString() ?? "gpt-3.5-turbo";
                 _settings.AzureSpeechKey = SpeechKeyPasswordBox.Password;
@@ -401,21 +403,21 @@ namespace Speech2TextAssistant
                 _settings.HotKey = HotkeyTextBox.Text;
                 _settings.TextInputHotKey = TextInputHotkeyTextBox.Text;
                 _settings.DefaultProcessingMode = ((ComboBoxItem)ProcessingModeComboBox.SelectedItem)?.Tag?.ToString() ?? "TranslateToEnglishEmail";
-                
+
                 var recordingModeText = ((ComboBoxItem)RecordingModeComboBox.SelectedItem)?.Content?.ToString();
                 _settings.RecordingMode = recordingModeText?.Contains("Hold") == true ? "HoldToRecord" : "ToggleRecord";
-                
+
                 _settings.StartWithWindows = StartupCheckBox.IsChecked == true;
                 _settings.MinimizeToTray = MinimizeToTrayCheckBox.IsChecked == true;
-                
+
                 ConfigManager.SaveSettings(_settings);
-                
+
                 // 重新注册快捷键
                 _hotkeyService?.UnregisterHotkey();
                 var windowInteropHelper = new System.Windows.Interop.WindowInteropHelper(this);
                 _hotkeyService?.RegisterHotkey(windowInteropHelper.Handle, _settings.HotKey);
                 _hotkeyService?.RegisterTextInputHotkey(windowInteropHelper.Handle, _settings.TextInputHotKey);
-                
+
                 UpdateStatus("设置已保存", Colors.Green);
                 AddLog("设置已保存到配置文件");
             }
@@ -433,7 +435,7 @@ namespace Speech2TextAssistant
             {
                 const string keyName = "Speech2TextAssistant";
                 using var key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
-                
+
                 if (enable)
                 {
                     var exePath = System.Reflection.Assembly.GetExecutingAssembly().Location.Replace(".dll", ".exe");
@@ -452,7 +454,7 @@ namespace Speech2TextAssistant
                 UpdateStatus($"设置开机自启动失败: {ex.Message}", Colors.Red);
             }
         }
-        
+
         private bool IsStartupEnabled()
         {
             try
@@ -477,19 +479,19 @@ namespace Speech2TextAssistant
                     UpdateStatus("设置未加载，请稍后再试", Colors.Red);
                     return;
                 }
-                
+
                 if (string.IsNullOrEmpty(_settings.AzureSpeechKey))
                 {
                     UpdateStatus("请先设置Azure Speech Key", Colors.Red);
                     return;
                 }
-                
+
                 if (_speechService == null)
                 {
                     UpdateStatus("语音服务未初始化", Colors.Red);
                     return;
                 }
-                
+
                 if (_settings.RecordingMode == "ToggleRecord")
                 {
                     if (!_isToggleRecording && _speechService?.IsRecording != true)
@@ -514,7 +516,7 @@ namespace Speech2TextAssistant
                     {
                         return;
                     }
-                    
+
                     _speechService?.Initialize(_settings.AzureSpeechKey, _settings.AzureSpeechRegion ?? "eastus");
                     UpdateStatus("开始录音...", Colors.Orange);
                     ShowRecordingOverlay();
@@ -537,7 +539,7 @@ namespace Speech2TextAssistant
                 {
                     return;
                 }
-                
+
                 if (_speechService?.IsRecording == true)
                 {
                     UpdateStatus("录音结束，正在处理...", Colors.Blue);
@@ -552,7 +554,7 @@ namespace Speech2TextAssistant
                 HideRecordingOverlay();
             }
         }
-        
+
         // 文本输入快捷键事件处理
         private void OnTextInputHotkeyPressed(object? sender, EventArgs e)
         {
@@ -560,12 +562,12 @@ namespace Speech2TextAssistant
             {
                 // 在显示输入窗口之前保存当前活动窗口
                 var targetWindow = OutputSimulator.GetCurrentForegroundWindow();
-                
+
                 this.Dispatcher.Invoke(() =>
                 {
                     var textInputWindow = new TextInputWindow();
                     var result = textInputWindow.ShowDialog();
-                    
+
                     if (result == true && !string.IsNullOrWhiteSpace(textInputWindow.InputText))
                     {
                         // 异步处理文本输入，传递目标窗口句柄
@@ -579,38 +581,38 @@ namespace Speech2TextAssistant
                 AddLog($"文本输入快捷键错误: {ex.Message}");
             }
         }
-        
+
         private async Task ProcessTextInputAsync(string inputText, IntPtr targetWindow = default)
         {
             try
             {
                 this.Dispatcher.Invoke(() => UpdateStatus("正在处理文本...", Colors.Blue));
-                
+
                 if (_settings == null)
                 {
                     this.Dispatcher.Invoke(() => UpdateStatus("设置未加载", Colors.Red));
                     return;
                 }
-                
+
                 if (string.IsNullOrEmpty(_settings.OpenAIApiKey))
                 {
                     this.Dispatcher.Invoke(() => UpdateStatus("请先设置OpenAI API Key", Colors.Red));
                     return;
                 }
-                
+
                 // 获取当前选择的处理模式
                 var processingMode = _settings.DefaultProcessingMode ?? "TranslateToEnglishEmail";
                 var mode = _settings.GetProcessingMode(processingMode);
-                
+
                 if (mode == null)
                 {
                     mode = _settings.GetDefaultProcessingModeObject();
                 }
-                
+
                 // 使用ChatGPT处理文本
                 _chatGptService?.Initialize(_settings.OpenAIApiKey, _settings.ModelName ?? "gpt-3.5-turbo");
                 var processedText = await (_chatGptService?.ProcessTextAsync(inputText, mode) ?? Task.FromResult(inputText));
-                
+
                 if (!string.IsNullOrEmpty(processedText))
                 {
                     // 发送处理后的文本到指定窗口或当前活动窗口
@@ -622,7 +624,7 @@ namespace Speech2TextAssistant
                     {
                         await OutputSimulator.SendTextToActiveWindowAsync(processedText);
                     }
-                    
+
                     this.Dispatcher.Invoke(() =>
                     {
                         UpdateStatus("文本处理完成", Colors.Green);
@@ -683,7 +685,7 @@ namespace Speech2TextAssistant
         private void LoadProcessingModes()
         {
             ProcessingModeComboBox.Items.Clear();
-            
+
             foreach (var mode in _settings?.ProcessingModes ?? new List<ProcessingMode>())
             {
                 ProcessingModeComboBox.Items.Add(new ComboBoxItem
@@ -692,7 +694,7 @@ namespace Speech2TextAssistant
                     Tag = mode.Name
                 });
             }
-            
+
             // 设置默认选中项
             for (int i = 0; i < ProcessingModeComboBox.Items.Count; i++)
             {
@@ -704,19 +706,19 @@ namespace Speech2TextAssistant
                 }
             }
         }
-        
+
         private void ManageModesButton_Click(object sender, RoutedEventArgs e)
         {
             var managerWindow = new ProcessingModeManagerWindow(_settings?.ProcessingModes ?? new List<ProcessingMode>());
             managerWindow.SetDefaultMode(_settings?.DefaultProcessingMode ?? string.Empty);
-            
+
             if (managerWindow.ShowDialog() == true)
             {
                 // 更新设置中的处理模式列表
                 if (_settings != null)
                 {
                     _settings.ProcessingModes = managerWindow.GetProcessingModes() ?? new List<ProcessingMode>();
-                    
+
                     // 更新默认模式
                     var defaultModeName = managerWindow.GetDefaultModeName();
                     if (!string.IsNullOrEmpty(defaultModeName))
@@ -724,15 +726,15 @@ namespace Speech2TextAssistant
                         _settings.DefaultProcessingMode = defaultModeName;
                     }
                 }
-                
+
                 // 重新加载处理模式
                 LoadProcessingModes();
-                
+
                 // 保存设置
                 SaveSettings();
             }
         }
-        
+
         private void ProcessingModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_settings != null && ProcessingModeComboBox.SelectedItem is ComboBoxItem selectedItem)
@@ -758,30 +760,30 @@ namespace Speech2TextAssistant
                 try
                 {
                     HideRecordingOverlay();
-                    
+
                     if (string.IsNullOrWhiteSpace(recognizedText))
                     {
                         UpdateStatus("未识别到语音内容", Colors.Orange);
                         AddLog("语音识别完成，但未识别到内容");
                         return;
                     }
-                    
+
                     UpdateStatus("正在处理文本...", Colors.Blue);
                     AddLog($"识别结果: {recognizedText}");
-                    
+
                     if (!string.IsNullOrEmpty(_settings?.OpenAIApiKey))
                     {
                         _chatGptService.Initialize(_settings.OpenAIApiKey!, _settings.ModelName ?? "gpt-3.5-turbo");
-                        
+
                         // 获取当前选中的处理模式
                         var selectedMode = _settings.GetProcessingMode(_settings.DefaultProcessingMode ?? string.Empty);
                         if (selectedMode == null)
                         {
                             selectedMode = _settings.GetDefaultProcessingModeObject();
                         }
-                        
+
                         var processedText = await _chatGptService.ProcessTextAsync(recognizedText, selectedMode);
-                        
+
                         if (!string.IsNullOrEmpty(processedText))
                         {
                             System.Windows.Clipboard.SetText(processedText);
@@ -847,10 +849,10 @@ namespace Speech2TextAssistant
             {
                 var timestamp = DateTime.Now.ToString("HH:mm:ss");
                 var logEntry = $"[{timestamp}] {message}\n";
-                
+
                 // 添加到日志文本块
                 LogTextBlock.Text += logEntry;
-                
+
                 // 限制日志长度（保留最后1000行）
                 var lines = LogTextBlock.Text.Split('\n');
                 if (lines.Length > 1000)
@@ -870,7 +872,7 @@ namespace Speech2TextAssistant
             _speechService?.StopRecognition();
             _notifyIcon?.Dispose();
             _recordingOverlay?.Close();
-            
+
             base.OnClosing(e);
         }
     }

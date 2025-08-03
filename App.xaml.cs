@@ -9,20 +9,20 @@ namespace Speech2TextAssistant
     {
         private static Mutex? _mutex;
         private const string MutexName = "Speech2TextAssistant_SingleInstance";
-        
+
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
-        
+
         [DllImport("user32.dll")]
         private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-        
+
         private const int SW_RESTORE = 9;
-        
+
         protected override void OnStartup(StartupEventArgs e)
         {
             // 检查是否已有实例运行
             _mutex = new Mutex(true, MutexName, out bool createdNew);
-            
+
             if (!createdNew)
             {
                 // 如果已有实例运行，尝试激活现有窗口
@@ -31,10 +31,10 @@ namespace Speech2TextAssistant
                 Current.Shutdown();
                 return;
             }
-            
+
             base.OnStartup(e);
         }
-        
+
         private void ActivateExistingInstance()
         {
             try
@@ -42,7 +42,7 @@ namespace Speech2TextAssistant
                 // 查找现有的应用程序进程
                 var currentProcess = Process.GetCurrentProcess();
                 var processes = Process.GetProcessesByName(currentProcess.ProcessName);
-                
+
                 foreach (var process in processes)
                 {
                     if (process.Id != currentProcess.Id && process.MainWindowHandle != IntPtr.Zero)
@@ -59,7 +59,7 @@ namespace Speech2TextAssistant
                 // 忽略激活失败的情况
             }
         }
-        
+
         protected override void OnExit(ExitEventArgs e)
         {
             _mutex?.ReleaseMutex();

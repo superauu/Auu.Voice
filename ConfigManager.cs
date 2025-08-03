@@ -77,7 +77,7 @@ public class ConfigManager
                 ProcessingModes = settings.ProcessingModes,
                 CustomPrompt = settings.CustomPrompt
             };
-            
+
             var json = JsonSerializer.Serialize(settingsToSave, JsonOptions);
             File.WriteAllText(ConfigPath, json);
         }

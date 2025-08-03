@@ -9,7 +9,7 @@ public class OutputSimulator
 {
     [DllImport("user32.dll")]
     private static extern IntPtr GetForegroundWindow();
-    
+
     /// <summary>
     /// 获取当前前台窗口句柄
     /// </summary>
@@ -110,7 +110,7 @@ public class OutputSimulator
             MessageBox.Show($"输出文本失败: {ex.Message}", "错误");
         }
     }
-    
+
     /// <summary>
     /// 向指定窗口发送文本
     /// </summary>
@@ -157,7 +157,7 @@ public class OutputSimulator
                         MessageBox.Show($"粘贴文本失败: {ex.Message}", "错误");
                     }
                 });
-                
+
                 staThread.SetApartmentState(ApartmentState.STA);
                 staThread.Start();
                 staThread.Join();
@@ -173,7 +173,7 @@ public class OutputSimulator
     {
         const int maxRetries = 3;
         var originalClipboard = "";
-        
+
         for (int i = 0; i < maxRetries; i++)
         {
             try
@@ -215,7 +215,7 @@ public class OutputSimulator
                 if (i == maxRetries - 1) throw;
             }
         }
-        
+
         throw new InvalidOperationException("无法访问剪贴板，请稍后重试");
     }
 
@@ -266,7 +266,7 @@ public class OutputSimulator
                     // 处理控制字符（如换行符）
                     if (c == '\n')
                         SendKey(VK_RETURN);
-                    else if (c == '\t') 
+                    else if (c == '\t')
                         SendKey(VK_TAB);
                 }
                 else
@@ -284,7 +284,7 @@ public class OutputSimulator
             MessageBox.Show($"直接输入文本失败: {ex.Message}", "错误");
         }
     }
-    
+
     /// <summary>
     /// 向指定窗口发送文本
     /// </summary>
@@ -306,7 +306,7 @@ public class OutputSimulator
                     // 处理控制字符（如换行符）
                     if (c == '\n')
                         SendKey(VK_RETURN);
-                    else if (c == '\t') 
+                    else if (c == '\t')
                         SendKey(VK_TAB);
                 }
                 else
@@ -347,7 +347,7 @@ public class OutputSimulator
     {
         // 使用Unicode输入方法，绕过输入法影响
         var inputs = new INPUT[2];
-        
+
         // Key down
         inputs[0] = new INPUT
         {
@@ -364,7 +364,7 @@ public class OutputSimulator
                 }
             }
         };
-        
+
         // Key up
         inputs[1] = new INPUT
         {
@@ -381,7 +381,7 @@ public class OutputSimulator
                 }
             }
         };
-        
+
         SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
     }
 
@@ -420,14 +420,14 @@ public class OutputSimulator
     private static IntPtr SwitchToEnglishInputMethod()
     {
         var currentLayout = GetCurrentInputMethod();
-        
+
         // 获取所有可用的键盘布局
         var layoutCount = GetKeyboardLayoutList(0, Array.Empty<IntPtr>());
         if (layoutCount > 0)
         {
             var layouts = new IntPtr[layoutCount];
             GetKeyboardLayoutList(layoutCount, layouts);
-            
+
             // 查找英文布局 (通常是0x04090409 for US English)
             foreach (var layout in layouts)
             {
@@ -440,7 +440,7 @@ public class OutputSimulator
                 }
             }
         }
-        
+
         return currentLayout;
     }
 

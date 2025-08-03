@@ -12,17 +12,17 @@ public class HotkeyService
     private const uint MOD_CTRL = 0x0002;
     private const uint MOD_ALT = 0x0001;
     private const uint MOD_SHIFT = 0x0004;
-    
+
     // 语音录音快捷键
     private bool _isVoiceKeyPressed;
     private uint _voiceModifiers;
     private uint _voiceTargetKey;
-    
+
     // 文本输入快捷键
     private bool _isTextKeyPressed;
     private uint _textModifiers;
     private uint _textTargetKey;
-    
+
     private Timer? _keyStateTimer;
     private IntPtr _windowHandle;
     private bool _isListeningPaused = false;
@@ -52,7 +52,7 @@ public class HotkeyService
 
         return RegisterHotKey(handle, HOTKEY_ID_VOICE, _voiceModifiers, _voiceTargetKey);
     }
-    
+
     public bool RegisterTextInputHotkey(IntPtr handle, string textHotkey)
     {
         // 解析文本输入快捷键字符串
@@ -60,7 +60,7 @@ public class HotkeyService
 
         return RegisterHotKey(handle, HOTKEY_ID_TEXT, _textModifiers, _textTargetKey);
     }
-    
+
     private void ParseHotkey(string hotkey, out uint modifiers, out uint targetKey)
     {
         var parts = hotkey.Split('+');
@@ -87,7 +87,7 @@ public class HotkeyService
             }
         }
     }
-    
+
     private uint GetVirtualKeyCode(string key)
     {
         // 处理数字键 0-9
@@ -95,26 +95,53 @@ public class HotkeyService
         {
             return (uint)(0x30 + (key[0] - '0')); // VK_0 到 VK_9
         }
-        
+
         // 处理字母键 A-Z
         if (key.Length == 1 && char.IsLetter(key[0]))
         {
             return (uint)key[0]; // A-Z 的虚拟键码就是其ASCII值
         }
-        
+
         // 处理特殊键
         return key switch
         {
-            "F1" => 0x70, "F2" => 0x71, "F3" => 0x72, "F4" => 0x73,
-            "F5" => 0x74, "F6" => 0x75, "F7" => 0x76, "F8" => 0x77,
-            "F9" => 0x78, "F10" => 0x79, "F11" => 0x7A, "F12" => 0x7B,
-            "SPACE" => 0x20, "ENTER" => 0x0D, "TAB" => 0x09,
-            "ESC" => 0x1B, "ESCAPE" => 0x1B,
-            "UP" => 0x26, "DOWN" => 0x28, "LEFT" => 0x25, "RIGHT" => 0x27,
-            "HOME" => 0x24, "END" => 0x23, "PAGEUP" => 0x21, "PAGEDOWN" => 0x22,
-            "INSERT" => 0x2D, "DELETE" => 0x2E,
-            "D1" => 0x31, "D2" => 0x32, "D3" => 0x33, "D4" => 0x34, "D5" => 0x35,
-            "D6" => 0x36, "D7" => 0x37, "D8" => 0x38, "D9" => 0x39, "D0" => 0x30,
+            "F1" => 0x70,
+            "F2" => 0x71,
+            "F3" => 0x72,
+            "F4" => 0x73,
+            "F5" => 0x74,
+            "F6" => 0x75,
+            "F7" => 0x76,
+            "F8" => 0x77,
+            "F9" => 0x78,
+            "F10" => 0x79,
+            "F11" => 0x7A,
+            "F12" => 0x7B,
+            "SPACE" => 0x20,
+            "ENTER" => 0x0D,
+            "TAB" => 0x09,
+            "ESC" => 0x1B,
+            "ESCAPE" => 0x1B,
+            "UP" => 0x26,
+            "DOWN" => 0x28,
+            "LEFT" => 0x25,
+            "RIGHT" => 0x27,
+            "HOME" => 0x24,
+            "END" => 0x23,
+            "PAGEUP" => 0x21,
+            "PAGEDOWN" => 0x22,
+            "INSERT" => 0x2D,
+            "DELETE" => 0x2E,
+            "D1" => 0x31,
+            "D2" => 0x32,
+            "D3" => 0x33,
+            "D4" => 0x34,
+            "D5" => 0x35,
+            "D6" => 0x36,
+            "D7" => 0x37,
+            "D8" => 0x38,
+            "D9" => 0x39,
+            "D0" => 0x30,
             _ => key.Length == 1 ? (uint)key[0] : 0
         };
     }
@@ -126,12 +153,12 @@ public class HotkeyService
             // 如果监听被暂停，则不检查按键状态
             if (_isListeningPaused)
                 return;
-                
+
             // 检查语音录音快捷键
             if (_voiceTargetKey != 0)
             {
                 var voiceAllKeysPressed = CheckHotkeyPressed(_voiceModifiers, _voiceTargetKey);
-                
+
                 if (voiceAllKeysPressed && !_isVoiceKeyPressed)
                 {
                     _isVoiceKeyPressed = true;
@@ -143,12 +170,12 @@ public class HotkeyService
                     HotkeyReleased?.Invoke(this, EventArgs.Empty);
                 }
             }
-            
+
             // 检查文本输入快捷键
             if (_textTargetKey != 0)
             {
                 var textAllKeysPressed = CheckHotkeyPressed(_textModifiers, _textTargetKey);
-                
+
                 if (textAllKeysPressed && !_isTextKeyPressed)
                 {
                     _isTextKeyPressed = true;
@@ -166,7 +193,7 @@ public class HotkeyService
             Debug.WriteLine($"按键状态检查异常: {ex.Message}");
         }
     }
-    
+
     private bool CheckHotkeyPressed(uint modifiers, uint targetKey)
     {
         var targetKeyPressed = (GetAsyncKeyState((int)targetKey) & 0x8000) != 0;
@@ -201,7 +228,7 @@ public class HotkeyService
         {
             if ((GetAsyncKeyState(0x10) & 0x8000) != 0) return false; // 不应该按下Shift
         }
-        
+
         return true;
     }
 
@@ -212,7 +239,7 @@ public class HotkeyService
     {
         _isListeningPaused = true;
     }
-    
+
     /// <summary>
     /// 恢复快捷键监听
     /// </summary>
@@ -220,7 +247,7 @@ public class HotkeyService
     {
         _isListeningPaused = false;
     }
-    
+
     public void UnregisterHotkey()
     {
         _keyStateTimer?.Dispose();
@@ -236,7 +263,7 @@ public class HotkeyService
     public bool ProcessHotkey(Message m)
     {
         // 保留原有的热键处理逻辑作为备用
-        if (m.Msg == 0x0312 && (m.WParam.ToInt32() == HOTKEY_ID_VOICE || m.WParam.ToInt32() == HOTKEY_ID_TEXT)) 
+        if (m.Msg == 0x0312 && (m.WParam.ToInt32() == HOTKEY_ID_VOICE || m.WParam.ToInt32() == HOTKEY_ID_TEXT))
             return true; // 已由定时器处理，这里只是消费消息
         return false;
     }
