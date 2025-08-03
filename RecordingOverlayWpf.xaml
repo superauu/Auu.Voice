@@ -19,7 +19,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                
+
                 <!-- 文字显示区域 -->
                 <TextBlock x:Name="StatusTextBlock" 
                           Grid.Row="0"
@@ -33,7 +33,7 @@
                           Margin="20,15,20,10"
                           TextWrapping="Wrap"
                           TextTrimming="CharacterEllipsis"/>
-                
+
                 <!-- 波形显示区域 -->
                 <Canvas x:Name="WaveformCanvas" 
                        Grid.Row="1"

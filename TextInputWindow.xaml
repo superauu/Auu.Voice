@@ -8,7 +8,7 @@
         Topmost="True"
         ShowInTaskbar="False"
         ResizeMode="NoResize">
-    
+
     <Window.Resources>
         <!-- 现代按钮样式 -->
         <Style x:Key="ModernButtonStyle" TargetType="Button">
@@ -44,7 +44,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        
+
         <!-- 次要按钮样式 -->
         <Style x:Key="SecondaryButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="#F0F0F0"/>
@@ -79,7 +79,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        
+
         <!-- 现代文本框样式 -->
         <Style x:Key="ModernTextBoxStyle" TargetType="TextBox">
             <Setter Property="Background" Value="White"/>
@@ -110,7 +110,7 @@
             </Setter>
         </Style>
     </Window.Resources>
-    
+
     <Border Background="White" 
             BorderBrush="#CCCCCC" 
             BorderThickness="1" 
@@ -119,18 +119,18 @@
         <Border.Effect>
             <DropShadowEffect Color="Black" Direction="270" ShadowDepth="4" Opacity="0.3" BlurRadius="8"/>
         </Border.Effect>
-        
+
         <Grid Margin="15">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            
+
             <!-- 标题栏 -->
             <TextBlock Grid.Row="0" Text="输入文本内容" FontSize="16" FontWeight="Bold" 
                        Foreground="#333333" Margin="0,0,0,10"/>
-            
+
             <!-- 文本输入区域 -->
             <TextBox x:Name="InputTextBox" Grid.Row="1" 
                      Style="{StaticResource ModernTextBoxStyle}"
@@ -139,7 +139,7 @@
                      VerticalScrollBarVisibility="Auto"
                      Margin="0,0,0,15"
                      MinHeight="80"/>
-            
+
             <!-- 按钮区域 -->
             <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button x:Name="CancelButton" Content="取消" 

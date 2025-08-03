@@ -161,7 +161,7 @@
             </Setter>
         </Style>
     </Window.Resources>
-    
+
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="300"/>
@@ -169,7 +169,7 @@
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        
+
         <!-- 处理模式列表 -->
         <GroupBox Grid.Row="0" Header="📋 处理模式列表" Margin="0,0,0,0" Padding="5" Style="{StaticResource ModernGroupBoxStyle}">
             <Grid>
@@ -177,7 +177,7 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                
+
                 <DataGrid x:Name="ProcessingModesDataGrid" Grid.Column="0" 
                           AutoGenerateColumns="False" 
                           CanUserAddRows="False" 
@@ -191,7 +191,7 @@
                         <DataGridCheckBoxColumn Header="默认" Binding="{Binding IsDefault}" Width="60" IsReadOnly="True"/>
                     </DataGrid.Columns>
                 </DataGrid>
-                
+
                 <StackPanel Grid.Column="1" Orientation="Vertical" Margin="15,0,0,0">
                     <Button x:Name="AddModeButton" Content="➕ 添加" Width="100" Height="36" Margin="0,0,0,8" Style="{StaticResource ModernButtonStyle}" Click="AddModeButton_Click"/>
                     <Button x:Name="EditModeButton" Content="✏️ 编辑" Width="100" Height="36" Margin="0,0,0,8" Style="{StaticResource SecondaryButtonStyle}" Click="EditModeButton_Click" IsEnabled="False"/>
@@ -200,9 +200,9 @@
                 </StackPanel>
             </Grid>
         </GroupBox>
-        
+
         <Separator Grid.Row="1" Margin="0,0" Background="#DEE2E6" Height="1"/>
-        
+
         <!-- 编辑区域 -->
         <GroupBox Grid.Row="2" Header="✏️ 编辑处理模式" Margin="0,15,0,15" Padding="5" Style="{StaticResource ModernGroupBoxStyle}">
             <Grid>
@@ -215,13 +215,13 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                
+
                 <Label Grid.Row="0" Grid.Column="0" Content="名称:" VerticalAlignment="Center" Margin="0,0,15,8" FontWeight="Medium" Foreground="#495057"/>
                 <TextBox x:Name="ModeNameTextBox" Grid.Row="0" Grid.Column="1" Height="40" Margin="0,0,0,8" Style="{StaticResource ModernTextBoxStyle}"/>
-                
+
                 <Label Grid.Row="1" Grid.Column="0" Content="显示名称:" VerticalAlignment="Center" Margin="0,0,15,8" FontWeight="Medium" Foreground="#495057"/>
                 <TextBox x:Name="ModeDisplayNameTextBox" Grid.Row="1" Grid.Column="1" Height="40" Margin="0,0,0,8" Style="{StaticResource ModernTextBoxStyle}"/>
-                
+
                 <Label Grid.Row="2" Grid.Column="0" Content="系统提示词:" VerticalAlignment="Top" Margin="0,8,15,0" FontWeight="Medium" Foreground="#495057"/>
                 <TextBox x:Name="ModeSystemPromptTextBox" Grid.Row="2" Grid.Column="1" 
                          AcceptsReturn="True" 
@@ -230,7 +230,7 @@
                          Margin="0,8,0,0" Style="{StaticResource ModernTextBoxStyle}"/>
             </Grid>
         </GroupBox>
-        
+
         <!-- 按钮区域 -->
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,10,10">
             <Button x:Name="SaveModeButton" Content="💾 保存模式" Width="120" Height="36" Margin="0,0,15,0" Style="{StaticResource ModernButtonStyle}" Click="SaveModeButton_Click" IsEnabled="False"/>

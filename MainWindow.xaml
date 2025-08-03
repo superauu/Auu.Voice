@@ -7,7 +7,7 @@
         Background="White"
         FontFamily="Microsoft YaHei UI, Segoe UI"
         FontSize="13">
-    
+
     <Window.Resources>
         <!-- 现代按钮样式 -->
         <Style x:Key="ModernButtonStyle" TargetType="Button">
@@ -42,7 +42,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        
+
         <!-- 次要按钮样式 -->
         <Style x:Key="SecondaryButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="#6C757D"/>
@@ -110,7 +110,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        
+
         <!-- 现代文本框样式 -->
         <Style x:Key="ModernTextBoxStyle" TargetType="TextBox">
             <Setter Property="Background" Value="White"/>
@@ -137,7 +137,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        
+
         <!-- 现代密码框样式 -->
         <Style x:Key="ModernPasswordBoxStyle" TargetType="PasswordBox">
             <Setter Property="Background" Value="White"/>
@@ -164,7 +164,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        
+
         <!-- 现代下拉框样式 -->
         <Style x:Key="ModernComboBoxStyle" TargetType="ComboBox">
             <Setter Property="Background" Value="White"/>
@@ -173,7 +173,7 @@
             <Setter Property="Padding" Value="6,4"/>
             <Setter Property="FontSize" Value="13"/>
         </Style>
-        
+
         <!-- 现代GroupBox样式 -->
         <Style x:Key="ModernGroupBoxStyle" TargetType="GroupBox">
             <Setter Property="Background" Value="White"/>
@@ -212,14 +212,14 @@
             </Setter>
         </Style>
     </Window.Resources>
-    
+
     <Grid Margin="0">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-        
+
         <!-- API设置组 -->
         <GroupBox Grid.Row="0" Header="🔑 API 设置" Margin="0,0,0,0" Padding="5" Style="{StaticResource ModernGroupBoxStyle}">
             <Grid>
@@ -233,10 +233,10 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
-                
+
                 <Label Grid.Row="0" Grid.Column="0" Content="OpenAI API Key:" VerticalAlignment="Center" Margin="0,0,15,8" FontWeight="Medium" Foreground="#495057"/>
                 <PasswordBox x:Name="ApiKeyPasswordBox" Grid.Row="0" Grid.Column="1" Margin="0,0,0,8" Height="32" Style="{StaticResource ModernPasswordBoxStyle}"/>
-                
+
                 <Label Grid.Row="1" Grid.Column="0" Content="GPT 模型:" VerticalAlignment="Center" Margin="0,0,15,8" FontWeight="Medium" Foreground="#495057"/>
                 <ComboBox x:Name="ModelComboBox" Grid.Row="1" Grid.Column="1" Margin="0,0,0,8" Height="32" Style="{StaticResource ModernComboBoxStyle}">
                     <ComboBoxItem Content="gpt-3.5-turbo"/>
@@ -244,15 +244,15 @@
                     <ComboBoxItem Content="gpt-4-turbo"/>
                     <ComboBoxItem Content="gpt-4o"/>
                 </ComboBox>
-                
+
                 <Label Grid.Row="2" Grid.Column="0" Content="Azure Speech Key:" VerticalAlignment="Center" Margin="0,0,15,8" FontWeight="Medium" Foreground="#495057"/>
                 <PasswordBox x:Name="SpeechKeyPasswordBox" Grid.Row="2" Grid.Column="1" Margin="0,0,0,8" Height="32" Style="{StaticResource ModernPasswordBoxStyle}"/>
-                
+
                 <Label Grid.Row="3" Grid.Column="0" Content="区域:" VerticalAlignment="Center" Margin="0,0,15,0" FontWeight="Medium" Foreground="#495057"/>
                 <TextBox x:Name="SpeechRegionTextBox" Grid.Row="3" Grid.Column="1" Text="southeastasia" Height="32" Style="{StaticResource ModernTextBoxStyle}"/>
             </Grid>
         </GroupBox>
-        
+
         <!-- 功能设置组 -->
         <GroupBox Grid.Row="1" Header="⚙️ 功能设置" Margin="0,0,0,0" Padding="5" Style="{StaticResource ModernGroupBoxStyle}">
             <Grid>
@@ -268,15 +268,15 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
-                
+
                 <Label Grid.Row="0" Grid.Column="0" Content="语音录音快捷键:" VerticalAlignment="Center" Margin="0,0,15,8" FontWeight="Medium" Foreground="#495057"/>
                 <TextBox x:Name="HotkeyTextBox" Grid.Row="0" Grid.Column="1" Margin="0,0,0,8" Height="32" Style="{StaticResource ModernTextBoxStyle}"
                          KeyDown="HotkeyTextBox_KeyDown" GotFocus="HotkeyTextBox_GotFocus" LostFocus="HotkeyTextBox_LostFocus"/>
-                
+
                 <Label Grid.Row="1" Grid.Column="0" Content="文本输入快捷键:" VerticalAlignment="Center" Margin="0,0,15,8" FontWeight="Medium" Foreground="#495057"/>
                 <TextBox x:Name="TextInputHotkeyTextBox" Grid.Row="1" Grid.Column="1" Margin="0,0,0,8" Height="32" Style="{StaticResource ModernTextBoxStyle}"
                          KeyDown="TextInputHotkeyTextBox_KeyDown" GotFocus="TextInputHotkeyTextBox_GotFocus" LostFocus="TextInputHotkeyTextBox_LostFocus"/>
-                
+
                 <Label Grid.Row="2" Grid.Column="0" Content="处理模式:" VerticalAlignment="Center" Margin="0,0,15,8" FontWeight="Medium" Foreground="#495057"/>
                 <Grid Grid.Row="2" Grid.Column="1" Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
@@ -286,13 +286,13 @@
                     <ComboBox x:Name="ProcessingModeComboBox" Grid.Column="0" Height="32" Margin="0,0,8,0" Style="{StaticResource ModernComboBoxStyle}" SelectionChanged="ProcessingModeComboBox_SelectionChanged"/>
                     <Button x:Name="ManageModesButton" Grid.Column="1" Content="管理" Width="60" Height="36" Style="{StaticResource SecondaryButtonStyle}" Click="ManageModesButton_Click"/>
                 </Grid>
-                
+
                 <Label Grid.Row="3" Grid.Column="0" Content="录音模式:" VerticalAlignment="Center" Margin="0,0,15,8" FontWeight="Medium" Foreground="#495057"/>
                 <ComboBox x:Name="RecordingModeComboBox" Grid.Row="3" Grid.Column="1" Margin="0,0,0,8" Height="32" Style="{StaticResource ModernComboBoxStyle}">
                     <ComboBoxItem Content="按住录音 (Hold to Record)"/>
                     <ComboBoxItem Content="切换录音 (Toggle Record)"/>
                 </ComboBox>
-                
+
                 <Label Grid.Row="4" Grid.Column="0" Content="系统设置:" VerticalAlignment="Center" Margin="0,0,15,8" FontWeight="Medium" Foreground="#495057"/>
                 <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
                     <CheckBox x:Name="StartupCheckBox" Content="开机自动启动" Margin="0,0,20,0" FontSize="13" Foreground="#495057"
@@ -300,13 +300,13 @@
                     <CheckBox x:Name="MinimizeToTrayCheckBox" Content="启动时最小化到托盘" FontSize="13" Foreground="#495057"
                               Checked="MinimizeToTrayCheckBox_Checked" Unchecked="MinimizeToTrayCheckBox_Unchecked"/>
                 </StackPanel>
-                
+
                 <Label Grid.Row="5" Grid.Column="0" Content="测试:" VerticalAlignment="Center" Margin="0,0,15,0" FontWeight="Medium" Foreground="#495057"/>
                 <Button x:Name="TestButton" Grid.Row="5" Grid.Column="1" Content="🎤 测试录音" Width="120" Height="32" 
                         HorizontalAlignment="Left" Style="{StaticResource ModernButtonStyle}" Click="TestButton_Click"/>
             </Grid>
         </GroupBox>
-        
+
         <!-- 日志区域 -->
         <GroupBox Grid.Row="2" Header="📝 日志" Padding="5" Style="{StaticResource ModernGroupBoxStyle}">
             <DockPanel>
